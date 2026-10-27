@@ -1,0 +1,10 @@
+{"name":"Sofia Rinaldi","type":"vampire","system":{"headers":{"concept":"Opera singer","chronicle":"Milan by Night","ambition":"Return to La Scala","desire":"A standing ovation","sire":"Count Orsini","generation":"12","tenets":"<p>Never feed in Elysium</p>","touchstones":"<p>Protect her voice coach -> Matteo</p>"},
+ "attributes":{"strength":{"value":1},"dexterity":{"value":2},"stamina":{"value":2},"charisma":{"value":4},"manipulation":{"value":3},"composure":{"value":3},"intelligence":{"value":2},"wits":{"value":3},"resolve":{"value":2}},
+ "skills":{"athletics":{"value":1,"bonuses":[]},"performance":{"value":4,"bonuses":[{"source":"Singing","value":1}]},"etiquette":{"value":2,"bonuses":[]},"insight":{"value":2,"bonuses":[]},"persuasion":{"value":3,"bonuses":[]},"animalken":{"value":0,"bonuses":[]},"subterfuge":{"value":1,"bonuses":[]}},
+ "disciplines":{"presence":{"value":3},"auspex":{"value":1},"celerity":{"value":1}},
+ "hunger":{"value":1,"max":5},"humanity":{"value":7,"stains":1},"blood":{"potency":1,"generation":"12"},"exp":{"value":5,"max":20},"notes":"<p>Has a rival soprano.</p>"},
+ "items":[{"name":"Toreador","type":"clan","system":{}},{"name":"Siren","type":"predatorType","system":{}},
+  {"name":"Awe","type":"power","system":{"discipline":"presence","level":1}},{"name":"Entrancement","type":"power","system":{"discipline":"presence","level":3}},{"name":"Daunt","type":"power","system":{"discipline":"presence","level":1}},
+  {"name":"Heightened Senses","type":"power","system":{"discipline":"auspex","level":1}},{"name":"Cat's Grace","type":"power","system":{"discipline":"celerity","level":1}},
+  {"name":"Fame","type":"feature","system":{"featuretype":"background","points":2}},{"name":"Herd","type":"feature","system":{"featuretype":"background","points":2}},{"name":"Beautiful","type":"feature","system":{"featuretype":"merit","points":2}},
+  {"name":"Obvious Predator","type":"feature","system":{"featuretype":"flaw","points":1}},{"name":"Enemy","type":"feature","system":{"featuretype":"flaw","points":1}}]}

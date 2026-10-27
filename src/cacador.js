@@ -126,7 +126,7 @@ function railCacador() {
       <span class="dots">${[1,2,3,4,5].map(i => `<button type="button" class="dot${i <= valor ? ' temp' : ''}" data-dot="${nome === 'Desespero' ? 'desespero' : 'perigo'}" data-i="${i}" data-max="5" aria-label="${esc(nome)} ${i}"></button>`).join('')}</span>
     </div>`;
 
-  el('col-rail').innerHTML = `
+  morph(el('col-rail'), `
   <div class="card">
     <div class="card-h"><h2>Vitais</h2></div>
     <div class="card-b">
@@ -166,7 +166,7 @@ function railCacador() {
       <div class="bline"><span class="t">Ímpeto</span><span class="v">${esc(S.impeto || '—')}</span></div>
       <div class="bline"><span class="t">Org</span><span class="v">${esc(S.org || '—')}</span></div>
     </div>
-  </div>`;
+  </div>`);
 }
 
 /* ------------------------------------------------------------
@@ -181,7 +181,7 @@ function fichaCacador() {
     m.cronica ? `<span class="sh-chip">${esc(m.cronica)}</span>` : ''
   ].filter(Boolean).join('');
 
-  el('sheet').innerHTML = `
+  morph(el('sheet'), `
   <div class="sh-page">
     <div class="sh-mast">
       <div class="sh-kicker">Caçador: A Revanche &middot; 5ª edição</div>
@@ -258,7 +258,7 @@ function fichaCacador() {
         ${S.notas ? `<p class="sh-p">${esc(S.notas)}</p>` : ''}
       </div>
     </div>
-  </div>`;
+  </div>`);
 }
 
 /* ------------------------------------------------------------

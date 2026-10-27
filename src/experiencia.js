@@ -227,7 +227,7 @@ function xpComprar() {
   uiAviso(`Comprado: ${op.rot} por ${op.custo} XP.`, { rotulo: 'Desfazer', fn: () => xpDesfazer(tok) });
   if (op.compra.tipo === 'disc') uiAviso(`Escolha o poder novo de ${op.compra.k} em Editar → Disciplinas.`, { rotulo: 'Escolher agora', fn: () => {
     uiFecharDialogos(); uiTrocarModo('editar');
-    const a = document.querySelector('#col-main [data-secao="disciplinas"]'); if (a) a.scrollIntoView({ block: 'start' });
+    uiIrSecao('disciplinas');
   } });
 }
 function xpDesfazer(tok) {

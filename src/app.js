@@ -45,7 +45,56 @@ let S = novoEstado();
 let painelForja = false;
 
 /* a ficha vai para a biblioteca do navegador (nuvem.js), que cuida de subir para a conta */
-function salvar() { bibliotecaGuardar(); nvBarra(); }
+function salvar() { histRegistrar(); bibliotecaGuardar(); nvBarra(); }
+
+/* ============================================================
+   DESFAZER / REFAZER
+   Cada mudança na ficha passa por salvar(): ali a ficha inteira é
+   comparada com a anterior e, se mudou, a anterior vai para a pilha.
+   Digitação seguida (menos de 1,2 s entre teclas) vira um passo só.
+   O histórico é da ficha aberta; trocar de ficha recomeça.
+   ============================================================ */
+const HIST = { id: null, atual: null, antes: [], depois: [], ultimoT: 0, agrupar: false, restaurando: false };
+const HIST_MAX = 40;
+function histRegistrar() {
+  const agrupar = HIST.agrupar; HIST.agrupar = false;
+  if (HIST.restaurando) return;
+  const id = S._id || null, json = JSON.stringify(S);
+  if (HIST.id !== id) { HIST.id = id; HIST.atual = json; HIST.antes = []; HIST.depois = []; histBotoes(); return; }
+  if (json === HIST.atual) return;
+  const agora = Date.now();
+  if (!(agrupar && HIST.ultimoT && agora - HIST.ultimoT < 1200)) {
+    HIST.antes.push(HIST.atual);
+    if (HIST.antes.length > HIST_MAX) HIST.antes.shift();
+  }
+  HIST.ultimoT = agrupar ? agora : 0;
+  HIST.atual = json; HIST.depois = [];
+  histBotoes();
+}
+function histAplicar(json) {
+  HIST.restaurando = true;
+  try { const id = S._id; S = adotar(JSON.parse(json)); S._id = id; HIST.atual = json; HIST.ultimoT = 0; render(); }
+  finally { HIST.restaurando = false; }
+  /* o render acima não registrou: grava a ficha restaurada */
+  bibliotecaGuardar(); nvBarra(); histBotoes();
+}
+function histDesfazer() {
+  if (!HIST.antes.length || HIST.id !== (S._id || null)) return false;
+  HIST.depois.push(HIST.atual); histAplicar(HIST.antes.pop()); return true;
+}
+function histRefazer() {
+  if (!HIST.depois.length || HIST.id !== (S._id || null)) return false;
+  HIST.antes.push(HIST.atual); histAplicar(HIST.depois.pop()); return true;
+}
+function histBotoes() {
+  const d = document.getElementById('btn-hist-desfazer'), r = document.getElementById('btn-hist-refazer');
+  if (d) d.disabled = !HIST.antes.length;
+  if (r) r.disabled = !HIST.depois.length;
+}
+
+/* ficha importada de outro lugar: as regras de criação só são conferidas se a pessoa pedir
+   (a ficha pode já ter experiência e Tipo de Predador embutidos, e os avisos seriam falsos) */
+const criacaoConferida = () => !S.importada || !!S.regrasCriacao;
 function adotar(bruto) {
   const s = Object.assign(novoEstado(), bruto);
   s.forja = Object.assign(novaForja(), s.forja);
@@ -149,6 +198,40 @@ function orcamento() {
     def:  { atual: defAtual,  alvo: 2 + extra.defeitos }
   };
 }
+/* linha de instrução ao vivo no topo de cada quadro da criação:
+   diz o que ainda falta, em vez de só repetir a regra */
+function faltaSobraTexto(d) {
+  if (d.ok) return '';
+  /* "sobra 8× 1" numa ficha em branco é ruído: esses pontos viram os que faltam
+     acima. Só aponta sobra num nível quando não falta nada acima dele. */
+  const nivel = x => Number(x.split('× ')[1]);
+  const maiorFalta = d.falta.length ? Math.max(...d.falta.map(nivel)) : 0;
+  const sobra = d.sobra.filter(x => nivel(x) > maiorFalta);
+  return [d.falta.length ? 'falta ' + d.falta.join(', ') : '', sobra.length ? 'sobra ' + sobra.join(', ') : ''].filter(Boolean).join(' · ');
+}
+function statusCriacao(estado, texto) {
+  if (!criacaoConferida()) return '';
+  const ok = estado === 'ok';
+  return `<p class="cstatus" data-estado="${estado}" role="status"><span class="pip ${estado}" aria-hidden="true"></span>${ok ? 'Base de criação: certo' : esc(texto)}</p>`;
+}
+function statusDistrib(d) { return statusCriacao(d.ok ? 'ok' : 'under', 'Na criação: ' + faltaSobraTexto(d)); }
+function statusPontos(atual, alvo, nome) {
+  const st = estadoNum(atual, alvo);
+  const txt = st === 'under' ? `faltam ${alvo - atual} ponto${alvo - atual > 1 ? 's' : ''} de ${nome} (${atual}/${alvo})`
+                             : `${atual - alvo} ponto${atual - alvo > 1 ? 's' : ''} além do previsto na criação (${atual}/${alvo})`;
+  return statusCriacao(st, txt);
+}
+
+function statusDisciplinas() {
+  const o = orcamento().disc;
+  if (!S.meta.cla) return statusCriacao('under', 'Escolha o clã no quadro 1: ele define quais Disciplinas entram na criação.');
+  const partes = [];
+  if (o.atual < o.alvo) partes.push(`faltam ${o.alvo - o.atual} ponto${o.alvo - o.atual > 1 ? 's' : ''} (${o.atual}/${o.alvo})`);
+  if (o.atual > o.alvo) partes.push(`${o.atual - o.alvo} ponto${o.atual - o.alvo > 1 ? 's' : ''} além do previsto (${o.atual}/${o.alvo})`);
+  partes.push(...o.avisos);
+  if (o.foraDoCla.length) partes.push('fora do clã: ' + o.foraDoCla.join(', '));
+  return statusCriacao(partes.length ? 'under' : 'ok', 'Na criação: ' + partes.join(' · '));
+}
 function estadoNum(atual, alvo) { return atual === alvo ? 'ok' : (atual > alvo ? 'over' : 'under'); }
 
 /* ============================================================
@@ -166,7 +249,7 @@ function renderRail() {
     return `<div class="bline"><span class="pip ${st}"></span><span class="t">${t}</span><span class="v ${st}">${esc(msg)}</span></div>`;
   };
 
-  el('col-rail').innerHTML = `
+  morph(el('col-rail'), `
   <div class="card">
     <div class="card-h"><h2>Vitais</h2></div>
     <div class="card-b">
@@ -212,8 +295,14 @@ function renderRail() {
   ${cardPerfil()}
   ${cardEtapas()}
 
-  <div class="card">
-    <div class="card-h"><h2>Base de criação</h2></div>
+  ${!criacaoConferida() ? `<div class="card">
+    <div class="card-h"><h2>Ficha importada</h2></div>
+    <div class="card-b">
+      <p class="note" style="margin:0 0 10px">Veio de ${esc(S.importada.origem || 'outro lugar')}. As regras de criação (pontos de Atributos, Habilidades, Disciplinas, Vantagens) não são conferidas: a ficha pode já ter experiência gasta e o Tipo de Predador embutido, e os avisos seriam falsos.</p>
+      <button type="button" class="btn sm" data-act="regras-criacao">Conferir com as regras de criação</button>
+    </div>
+  </div>` : `<div class="card">
+    <div class="card-h"><h2>Base de criação</h2>${S.importada ? '<button type="button" class="btn sm ghost" data-act="regras-criacao" style="margin-left:auto">Parar de conferir</button>' : ''}</div>
     <div class="card-b">
       <div class="budget">
         ${linhaD('Atributos', o.atr)}
@@ -226,7 +315,7 @@ function renderRail() {
       ${o.disc.avisos.length ? `<p class="err" style="margin:6px 0 0">${esc(o.disc.avisos.join(' · '))}</p>` : ''}
       <p class="note" style="margin:9px 0 0">Esta conta é a ficha no dia do Abraço: tudo que veio da experiência e do Tipo de Predador está descontado. Uma ficha de NPC antigo passa aqui igual à de um recém-criado.</p>
     </div>
-  </div>`;
+  </div>`}`);
 }
 
 /* As etapas do último sorteio, na ordem em que correram. Cada uma é
@@ -360,7 +449,7 @@ function cardAtributos() {
   return `
   <div class="card">
     <div class="card-h"><span class="step">2</span><h2>Atributos</h2><span class="hint">um 4 · três 3 · quatro 2 · um 1</span></div>
-    <div class="card-b"><div class="fields c3">
+    <div class="card-b">${statusDistrib(orcamento().atr)}<div class="fields c3">
       ${ATRIBUTOS.map(g => `<div>
         <div class="lbl" style="color:var(--blood-ink);border-bottom:1px solid var(--line-2);padding-bottom:3px;margin-bottom:6px">${esc(g.cat)}</div>
         ${g.itens.map(([k, pt, en]) => `<div class="trait has">
@@ -383,7 +472,7 @@ function cardHabilidades() {
       </select>
       <span class="hint">${esc(resumo)}</span>
     </div>
-    <div class="card-b"><div class="fields c3">
+    <div class="card-b">${statusDistrib(orcamento().hab)}<div class="fields c3">
       ${HABILIDADES.map(g => `<div>
         <div class="lbl" style="color:var(--blood-ink);border-bottom:1px solid var(--line-2);padding-bottom:3px;margin-bottom:6px">${esc(g.cat)}</div>
         ${g.itens.map(([k, pt, en]) => {
@@ -397,7 +486,7 @@ function cardHabilidades() {
         }).join('')}
       </div>`).join('')}
     </div>
-    <p class="note" style="margin:12px 0 0">As especializações ficam no quadro logo abaixo.</p>
+    <p class="note" style="margin:12px 0 0">As especializações ficam na aba Especializações.</p>
     </div>
   </div>`;
 }
@@ -465,7 +554,7 @@ function cardDisciplinas() {
   <div class="card">
     <div class="card-h"><span class="step">4</span><h2>Disciplinas</h2>
       <span class="hint">criação: dois pontos numa e um noutra, dentro do clã &middot; ${amp.teto} no total pela ${esc(S.meta.geracao || 13)}ª</span></div>
-    <div class="card-b">
+    <div class="card-b">${statusDisciplinas()}
       ${S.disc.length ? S.disc.map((d, idx) => {
         const info = DISCIPLINAS[d.nome] || { poderes: [] };
         const doPredador = !!(S._pred && S._pred.disc === d.nome);
@@ -566,7 +655,7 @@ function cardVantagens() {
   return `
   <div class="card">
     <div class="card-h"><span class="step">5</span><h2>Vantagens</h2><span class="hint">7 pontos</span></div>
-    <div class="card-b">
+    <div class="card-b">${ehCacador() ? '' : (o => statusPontos(o.vant.atual, o.vant.alvo, 'Vantagens'))(orcamento())}
       ${linhas(S.vant, 'vant')}
       <div class="adder">
         <select class="f" id="add-vant" aria-label="Vantagem">${listaOpcoes(ehCacador() ? VANTAGENS_CACADOR : agruparPorCategoria(VANTAGENS.concat(loresheetsComoVantagens())))}</select>
@@ -579,7 +668,7 @@ function cardVantagens() {
 
   <div class="card">
     <div class="card-h"><span class="step">6</span><h2>Defeitos</h2><span class="hint">2 pontos obrigatórios</span></div>
-    <div class="card-b">
+    <div class="card-b">${ehCacador() ? '' : (o => statusPontos(o.def.atual, o.def.alvo, 'Defeitos'))(orcamento())}
       ${linhas(S.def, 'def')}
       <div class="adder">
         <select class="f" id="add-def" aria-label="Defeito">${listaOpcoes(ehCacador() ? DEFEITOS_CACADOR : agruparPorCategoria(DEFEITOS.concat(DEFEITOS_DISCIPLINA.map(d => Object.assign({ min:1, max:1, cat:"Diversas", f:"Guia do Jogador", req:d.disc }, d)))))}</select>
@@ -735,16 +824,129 @@ function cardForja() {
   </div>`;
 }
 
+/* ============================================================
+   REDESENHO: muda só o que mudou
+   morph() compara o HTML novo com o que está na tela e mexe só nos nós
+   diferentes. O resto continua sendo o mesmo elemento: foco, cursor,
+   rolagem e o que o leitor de tela anunciava ficam onde estavam.
+   ============================================================ */
+const MORPH_TPL = document.createElement('template');
+function morph(alvo, html) {
+  MORPH_TPL.innerHTML = html;
+  morphFilhos(alvo, MORPH_TPL.content);
+  MORPH_TPL.innerHTML = '';
+}
+const morphMesmo = (a, b) => a.nodeType === b.nodeType && a.nodeName === b.nodeName && (a.nodeType !== 1 || (a.id || '') === (b.id || ''));
+function morphFilhos(de, para) {
+  let atual = de.firstChild, novo = para.firstChild;
+  while (novo) {
+    const prox = novo.nextSibling;
+    if (!atual) de.appendChild(novo);
+    else if (morphMesmo(atual, novo)) { morphNo(atual, novo); atual = atual.nextSibling; }
+    else { const velho = atual; atual = atual.nextSibling; de.replaceChild(novo, velho); }
+    novo = prox;
+  }
+  while (atual) { const p = atual.nextSibling; de.removeChild(atual); atual = p; }
+}
+function morphNo(a, b) {
+  if (a.nodeType !== 1) { if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue; return; }
+  for (const at of [...b.attributes]) if (a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+  for (const at of [...a.attributes]) if (!b.hasAttribute(at.name)) a.removeAttribute(at.name);
+  const tag = a.nodeName;
+  if (tag === 'TEXTAREA') { const v = b.textContent; if (a.value !== v && a !== document.activeElement) a.value = v; return; }
+  morphFilhos(a, b);
+  if (tag === 'INPUT') {
+    if (a.type === 'checkbox' || a.type === 'radio') a.checked = b.hasAttribute('checked');
+    else { const v = b.getAttribute('value') || ''; if (a.value !== v && a !== document.activeElement) a.value = v; }
+  } else if (tag === 'SELECT' && !a.multiple) {
+    const i = [...a.options].findIndex(o => o.hasAttribute('selected'));
+    const alvo = i >= 0 ? i : 0;
+    if (a.selectedIndex !== alvo) a.selectedIndex = alvo;
+  }
+}
+
+/* A vista escondida (a folha de Ver enquanto se edita, os quadros de Editar
+   enquanto se lê) não é montada a cada clique: fica marcada e é montada
+   quando aparece, ou antes de imprimir. */
+const VISTA = { tudo: true, sujos: new Set(), ficha: true };
+const vistaAtual = () => (typeof UI !== 'undefined' && UI.tela === 'ficha') ? UI.modo : null;
+/* a coluna de Editar em blocos: cada bloco vira um ou mais quadros (Vantagens traz Defeitos;
+   Moralidade traz Notas). Só os blocos da aba aberta são montados; os outros ficam marcados
+   e são montados quando a aba deles abre. */
+const BLOCOS_V = [['forja', () => cardForja()], ['conceito', () => cardConceito()], ['atributos', () => cardAtributos()], ['habilidades', () => cardHabilidades()],
+  ['especializacoes', () => cardEspecializacoes()], ['disciplinas', () => cardDisciplinas()], ['vantagens', () => cardVantagens()], ['moralidade', () => cardMoralidade()]];
+const BLOCOS_C = [['forja', () => cardForja()], ['credo', () => cardCredoImpeto()], ['atributos', () => cardAtributos()], ['habilidades', () => cardHabilidades()],
+  ['especializacoes', () => cardEspecializacoes()], ['trunfos', () => cardTrunfos()], ['vantagens', () => cardVantagens()], ['moralidade', () => cardMoralidade()]];
+const blocosAtuais = () => ehCacador() ? BLOCOS_C : BLOCOS_V;
+const marcaBloco = (k, html) => html.replace(/<div class="card(?=[\s"])/g, `<div data-bloco="${k}" class="card`);
+function montarMain() {
+  const main = el('col-main'), blocos = blocosAtuais();
+  const atuais = [...main.children].filter(n => n.dataset.bloco);
+  const seqDom = [...new Set(atuais.map(n => n.dataset.bloco))].join(',');
+  const seqNova = blocos.filter(([k]) => k !== 'forja' || painelForja).map(([k]) => k).join(',');
+  if (VISTA.tudo || seqDom !== seqNova) {
+    morph(main, blocos.map(([k, f]) => marcaBloco(k, f())).join(''));
+    VISTA.tudo = false; VISTA.sujos.clear();
+    return;
+  }
+  const aba = typeof UI !== 'undefined' ? UI.secaoAtual : '';
+  for (const [k, f] of blocos) {
+    if (!VISTA.sujos.has(k)) continue;
+    const nos = atuais.filter(n => n.dataset.bloco === k);
+    if (!(k === 'forja' || nos.some(n => !n.dataset.aba || n.dataset.aba === aba))) continue;
+    morphTrecho(main, nos, marcaBloco(k, f()));
+    VISTA.sujos.delete(k);
+  }
+}
+/* morph de um trecho da coluna: troca só os quadros de um bloco */
+function morphTrecho(pai, velhos, html) {
+  MORPH_TPL.innerHTML = html;
+  const novos = [...MORPH_TPL.content.children];
+  const ref = velhos.length ? velhos[velhos.length - 1].nextSibling : null;
+  novos.forEach((n, i) => {
+    const v = velhos[i];
+    if (v && morphMesmo(v, n)) morphNo(v, n);
+    else if (v) pai.replaceChild(n, v);
+    else pai.insertBefore(n, ref);
+  });
+  velhos.slice(novos.length).forEach(v => v.remove());
+  MORPH_TPL.innerHTML = '';
+}
+function montarFicha() { if (ehCacador()) fichaCacador(); else renderFicha(); VISTA.ficha = false; }
+function garantirVistas(o) {
+  o = o || {};
+  const m = vistaAtual();
+  if ((VISTA.tudo || VISTA.sujos.size) && (o.todas || m === 'editar')) { if (o.todas) VISTA.tudo = true; montarMain(); }
+  if (VISTA.ficha && (o.todas || o.ficha || m === 'ver')) montarFicha();
+}
+window.addEventListener('beforeprint', () => garantirVistas({ ficha: true }));
+
+/* render() troca o HTML das colunas inteiro: guarda qual controle tinha o foco
+   para devolvê-lo depois, senão o foco cai no <body> a cada clique */
+const ATTRS_FOCO = ['dot', 'i', 'box', 'hum', 'act', 'd', 't', 'sel', 'bind', 'pw', 'dist', 'nome', 'manter', 'fonte', 'forja'];
+function chaveFoco() {
+  const a = document.activeElement;
+  if (!a || a === document.body || !(el('col-main').contains(a) || el('col-rail').contains(a))) return null;
+  if (a.id) return '#' + CSS.escape(a.id);
+  const sel = ATTRS_FOCO.filter(k => a.dataset[k] != null)
+    .map(k => `[data-${k}="${CSS.escape(a.dataset[k])}"]`).join('');
+  return sel ? a.tagName.toLowerCase() + sel : null;
+}
+function devolverFoco(chave) {
+  if (!chave) return;
+  let alvo = null;
+  try { alvo = document.querySelector('#col-main ' + chave + ', #col-rail ' + chave); } catch (e) {}
+  if (alvo) alvo.focus({ preventScroll: true });
+}
+
 function render() {
-  el('col-main').innerHTML = ehCacador()
-    ? cardForja() + cardCredoImpeto() + cardAtributos() + cardHabilidades() + cardEspecializacoes()
-      + cardTrunfos() + cardVantagens() + cardMoralidade()
-    : cardForja() + cardConceito() + cardAtributos() + cardHabilidades() + cardEspecializacoes()
-      + cardDisciplinas() + cardVantagens() + cardMoralidade();
+  const foco = chaveFoco();
+  VISTA.sujos = new Set(blocosAtuais().map(b => b[0])); VISTA.ficha = true;
+  garantirVistas();
   sincronizarSistema();
   if (ehCacador()) railCacador(); else renderRail();
-  if (ehCacador()) fichaCacador(); else renderFicha();
   if (typeof uiDepoisDeRender === 'function') uiDepoisDeRender();
+  devolverFoco(foco);
   salvar();
 }
 
@@ -805,7 +1007,7 @@ function renderFicha() {
     m.cronica ? `<span class="sh-chip">${esc(m.cronica)}</span>` : ''
   ].filter(Boolean).join('');
 
-  el('sheet').innerHTML = `
+  morph(el('sheet'), `
   <div class="sh-page">
     <div class="sh-mast">
       <div class="sh-kicker">Vampiro: A Máscara &middot; 5ª edição</div>
@@ -897,7 +1099,7 @@ function renderFicha() {
         ${shLinha('Experiência total', Number(S.xpTotal) || 0)}
       </div>
     </div>` : ''}
-  </div>`;
+  </div>`);
 }
 
 /* ============================================================
@@ -1816,6 +2018,7 @@ document.addEventListener('click', (ev) => {
   }
 
   const act = t.dataset.act;
+  if (act === 'regras-criacao') { S.regrasCriacao = !S.regrasCriacao; return render(); }
   if (act === 'mancha') { S.manchas = Math.max(0, Math.min(10, S.manchas + Number(t.dataset.d))); return render(); }
   if (act === 'rm')     { S[t.dataset.t].splice(Number(t.dataset.i), 1); return render(); }
   if (act === 'rm-disc'){ S.disc.splice(Number(t.dataset.i), 1); return render(); }
@@ -1878,7 +2081,7 @@ document.addEventListener('click', (ev) => {
 document.addEventListener('input', (ev) => {
   const t = ev.target;
   if (t.dataset && t.dataset.forja === 'contexto') {
-    S.forja.contexto = t.value; salvar();
+    S.forja.contexto = t.value; HIST.agrupar = true; salvar();
     const alvo = el('ctx-hint');
     if (alvo) {
       alvo.innerHTML = resumoContexto(t.value);
@@ -1888,7 +2091,12 @@ document.addEventListener('input', (ev) => {
   if (t.dataset && t.dataset.bind) {
     const v = t.type === 'number' ? (t.value === '' ? 0 : Number(t.value)) : t.value;
     setPath(t.dataset.bind, v);
-    renderRail(); renderFicha(); salvar();
+    if (ehCacador()) railCacador(); else renderRail();
+    VISTA.ficha = true; garantirVistas();
+    /* o nome no topo e o contador de avisos acompanham o que se digita */
+    if (typeof uiCabecalho === 'function') { uiCabecalho(); uiValidacao(); }
+    HIST.agrupar = true;
+    salvar();
   }
 });
 
@@ -2123,7 +2331,13 @@ async function abrirPdf(arquivo, aviso) {
   aviso('Lendo o PDF…');
   try {
     const bytes = new Uint8Array(await arquivo.arrayBuffer());
-    const lido = await lerPdf(bytes, PDFLib);
+    let lido;
+    try { lido = await lerPdf(bytes, PDFLib); }
+    catch (e) {
+      /* não é o modelo daqui: outra ficha de Vampiro, lida campo a campo e conferida antes */
+      if (/não é o modelo/.test(e && e.message)) return impAbrirPdfAlheio(bytes.slice(), aviso);
+      throw e;
+    }
     const base = lido.pacote ? adotar(lido.pacote.estado) : novoEstado();
     const r = estadoDoPdf(lido, base, { DISCIPLINAS, HABILIDADES, ATRIBUTOS, CLAS, MAR: MAR_DO_TEMPO });
     const novo = adotar(r.estado);

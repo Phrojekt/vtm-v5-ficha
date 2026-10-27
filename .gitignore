@@ -31,6 +31,9 @@ api-vps.tar.gz
 /app.js
 /experiencia.js
 /interface.js
+/importar.js
+/pdfjs.min.js
+/pdfjs.worker.min.js
 /deploy/*
 !/deploy/.gitignore
 

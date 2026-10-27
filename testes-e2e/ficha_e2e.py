@@ -1,0 +1,165 @@
+"""Editar a ficha: abas, rolagem, foco, desfazer/refazer, ficha importada e redesenho parcial.
+Sem conta. Requer o site servido em E2E_SITE (padrão http://localhost:8765/, o deploy/ do subir.sh;
+`node servidor.js` também serve: E2E_SITE=http://localhost:4777/)."""
+import asyncio, os
+from playwright.async_api import async_playwright
+
+SITE = os.environ.get('E2E_SITE', 'http://localhost:8765/')
+FX = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fixtures')
+falhas = []
+def ok(c, t):
+    print(('  ok   ' if c else '  FALHA ') + t)
+    if not c: falhas.append(t)
+
+async def nova(p, inicio='branco', sistema='vampiro'):
+    await p.goto(SITE + '#/fichas'); await p.wait_for_timeout(500)
+    await p.click('#tela-fichas .pg-h [data-acao=nova]')
+    await p.check(f'input[name=sistema][value={sistema}]'); await p.check(f'input[name=inicio][value={inicio}]')
+    await p.click('#form-nova button[value=criar]'); await p.wait_for_timeout(700)
+    if inicio == 'sorteada': await p.click('#modo-editar'); await p.wait_for_timeout(300)
+
+visiveis = "[...document.querySelectorAll('#col-main > .card')].filter(c => c.offsetParent).map(c => c.querySelector('h2').textContent)"
+VIS_CSTATUS = "[...document.querySelectorAll('.cstatus')].filter(e => e.offsetParent).length"
+dot = lambda k, i: f'#col-main [data-dot="atr.{k}"][data-i="{i}"]'
+
+async def abas(p):
+    print('Abas')
+    await nova(p)
+    ok('/editar' in p.url, 'ficha em branco abre em Editar')
+    ok(await p.evaluate(visiveis) == ['Conceito & origem'], 'só a aba Identidade aparece')
+    ok(await p.locator('#secnav [role=tab]').count() == 8, 'oito abas no desktop')
+    ok(await p.locator('#secnav .aba-pend').count() == 5, 'ponto de pendência nas abas que faltam')
+    await p.click('#aba-rodape .btn.primary'); await p.wait_for_timeout(200)
+    ok(await p.evaluate(visiveis) == ['Atributos'], '"Próxima" abre Atributos')
+    await p.focus('#aba-atributos'); await p.keyboard.press('ArrowRight'); await p.wait_for_timeout(150)
+    ok(await p.evaluate(visiveis) == ['Habilidades'] and await p.evaluate('document.activeElement.id') == 'aba-habilidades', 'seta para a direita troca de aba e leva o foco')
+    await p.keyboard.press('End'); await p.wait_for_timeout(150)
+    ok(await p.evaluate(visiveis) == ['Notas & experiência'], 'End vai para a última aba')
+    await p.click('#aba-vantagens'); await p.wait_for_timeout(150)
+    ok(await p.evaluate(visiveis) == ['Vantagens', 'Defeitos'], 'Vantagens e Defeitos na mesma aba')
+    await p.click('#modo-ver'); await p.wait_for_timeout(300)
+    ok(await p.locator('#secnav a').count() >= 6 and await p.locator('#secnav [role=tab]').count() == 0, 'no modo Ver a barra volta a ser de atalhos')
+    await p.click('#modo-editar'); await p.wait_for_timeout(300)
+    ok(await p.evaluate(visiveis) == ['Vantagens', 'Defeitos'], 'voltar para Editar mantém a aba')
+
+async def rolagem_e_foco(p):
+    print('Rolagem, foco e redesenho parcial')
+    await nova(p)
+    await p.click('#aba-atributos'); await p.wait_for_timeout(200)
+    await p.evaluate('window.scrollTo(0, 120)')
+    y0 = await p.evaluate('scrollY')
+    outro = await p.evaluate_handle(f"document.querySelector('{dot('vigor', 1)}')")
+    for k, i in [('forca', 4), ('destreza', 3), ('carisma', 3), ('inteligencia', 2)]:
+        await p.click(dot(k, i)); await p.wait_for_timeout(80)
+    ok(await p.evaluate('scrollY') == y0, f'clicar nas bolinhas não rola a página ({y0} → {await p.evaluate("scrollY")})')
+    ok(await p.evaluate(f"document.activeElement.matches('{dot('inteligencia', 2)}')"), 'o foco fica na bolinha clicada')
+    ok(await outro.evaluate('e => e.isConnected'), 'as bolinhas que não mudaram são o mesmo elemento (morph, não innerHTML)')
+    ok(await p.evaluate('VISTA.ficha === true'), 'a folha do modo Ver não é montada enquanto se edita')
+    await p.evaluate("window.dispatchEvent(new Event('beforeprint'))")
+    ok(await p.evaluate('VISTA.ficha === false'), 'antes de imprimir a folha é montada')
+    await p.click(dot('vigor', 2)); await p.wait_for_timeout(80)
+    await p.click('#modo-ver'); await p.wait_for_timeout(300)
+    forca = await p.evaluate("[...document.querySelectorAll('#sheet .sh-line')].find(l => /^Força/.test(l.textContent)).querySelectorAll('.pips i.on').length")
+    ok(forca == 4, 'ao abrir Ver, a folha mostra o valor atual (Força 4)')
+    # tempo de um clique: o redesenho de agora × o de antes (as três vistas inteiras por innerHTML),
+    # com a CPU normal e 4× mais lenta (perto de um celular médio)
+    cdp = await p.context.new_cdp_session(p)
+    t = []
+    for lento in (1, 4):
+        await cdp.send('Emulation.setCPUThrottlingRate', {'rate': lento})
+        t.append(await p.evaluate("""() => {
+          uiTrocarModo('editar');
+          const medir = () => { const t0 = performance.now(); for (let i = 0; i < 15; i++) { render(); document.body.offsetHeight; } return (performance.now() - t0) / 15; };
+          const novo = medir();
+          const m0 = morph, g0 = garantirVistas;
+          morph = (a, h) => { a.innerHTML = h; }; garantirVistas = () => { VISTA.tudo = true; montarMain(); montarFicha(); };
+          const antigo = medir();
+          morph = m0; garantirVistas = g0; render();
+          return [novo, antigo]; }"""))
+    await cdp.send('Emulation.setCPUThrottlingRate', {'rate': 1})
+    ok(all(n < a for n, a in t), 'o redesenho novo é mais rápido que o antigo')
+    print(f'       por clique: {t[0][0]:.1f} ms agora × {t[0][1]:.1f} ms antes; CPU 4× mais lenta: {t[1][0]:.1f} ms × {t[1][1]:.1f} ms')
+
+async def desfazer(p):
+    print('Desfazer e refazer')
+    await nova(p)
+    ok(await p.is_disabled('#btn-hist-desfazer') and await p.is_disabled('#btn-hist-refazer'), 'botões começam desligados')
+    await p.click('#aba-atributos')
+    await p.click(dot('forca', 3)); await p.click(dot('destreza', 4)); await p.wait_for_timeout(100)
+    atr = lambda: p.evaluate('[S.atr.forca, S.atr.destreza]')
+    await p.keyboard.press('Control+z'); await p.wait_for_timeout(100)
+    ok(await atr() == [3, 1], 'Ctrl+Z desfaz a última bolinha')
+    await p.click('#btn-hist-desfazer'); await p.wait_for_timeout(100)
+    ok(await atr() == [1, 1] and await p.is_disabled('#btn-hist-desfazer'), 'o botão desfaz a anterior e desliga no começo')
+    await p.keyboard.press('Control+Shift+z'); await p.wait_for_timeout(100)
+    ok(await atr() == [3, 1], 'Ctrl+Shift+Z refaz')
+    await p.keyboard.press('Control+y'); await p.wait_for_timeout(100)
+    ok(await atr() == [3, 4] and await p.is_disabled('#btn-hist-refazer'), 'Ctrl+Y refaz a seguinte')
+    await p.click('#btn-hist-desfazer'); await p.wait_for_timeout(100)
+    await p.click(dot('vigor', 5)); await p.wait_for_timeout(100)
+    ok(await p.is_disabled('#btn-hist-refazer'), 'mudar depois de desfazer apaga o "refazer"')
+    # digitação seguida vira um passo só; Ctrl+Z dentro do campo é do navegador
+    await p.click('#aba-identidade'); await p.click('#f-nome'); await p.keyboard.type('Lucia', delay=40); await p.wait_for_timeout(100)
+    vigor = await p.evaluate('S.atr.vigor')
+    await p.keyboard.press('Control+z'); await p.wait_for_timeout(100)
+    ok(await p.evaluate('S.atr.vigor') == vigor and await p.evaluate('document.activeElement.id') == 'f-nome', 'Ctrl+Z dentro do campo fica com o navegador (não desfaz a ficha)')
+    await p.fill('#f-nome', ''); await p.keyboard.type('Lucia', delay=40); await p.wait_for_timeout(1500)
+    await p.click('#aba-identidade'); await p.wait_for_timeout(50)
+    await p.keyboard.press('Control+z'); await p.wait_for_timeout(150)
+    ok(await p.evaluate('S.meta.nome') == '' and await p.input_value('#f-nome') == '', 'digitar "Lucia" de uma vez desfaz num passo só')
+    await p.keyboard.press('Control+Shift+z'); await p.wait_for_timeout(150)
+    ok(await p.evaluate('S.meta.nome') == 'Lucia', 'e refaz')
+    # o desfeito é o que fica salvo
+    await p.keyboard.press('Control+z'); await p.wait_for_timeout(150)
+    await p.reload(); await p.wait_for_timeout(900)
+    ok(await p.evaluate('S.meta.nome') == '', 'o estado desfeito é o que fica guardado no navegador')
+    ok(await p.is_disabled('#btn-hist-desfazer'), 'outra ficha (ou recarregar) começa um histórico novo')
+    # leitura: sem desfazer
+    await p.click('#modo-ver'); await p.wait_for_timeout(200)
+    ok(await p.locator('#btn-hist-desfazer').is_visible(), 'desfazer também no modo Ver (dano, Fome…)')
+
+async def importada(p):
+    print('Ficha importada')
+    await p.goto(SITE + '#/fichas'); await p.wait_for_timeout(400)
+    await p.click('#tela-fichas .pg-h [data-acao=importar]')
+    await p.set_input_files('#arquivo-importar', os.path.join(FX, 'foundry.json'))
+    await p.wait_for_selector('#dlg-conferir[open]', timeout=15000)
+    await p.click('#imp-criar'); await p.wait_for_timeout(700)
+    ok((await p.text_content('#validacao')).strip() == 'Ficha importada', 'faixa diz "Ficha importada", sem contar avisos')
+    vistos = 0
+    for aba in ['atributos', 'habilidades', 'disciplinas', 'vantagens']:
+        await p.click('#aba-' + aba); await p.wait_for_timeout(80); vistos += await p.evaluate(VIS_CSTATUS)
+    ok(vistos == 0, 'nenhuma aba mostra linha de criação')
+    ok(await p.locator('#secnav .aba-pend').count() == 0 and await p.evaluate(VIS_CSTATUS) == 0, 'sem pontos de pendência nem linhas de criação')
+    ok(await p.locator('#col-rail button[data-act="regras-criacao"]').count() == 1, 'lateral oferece "Conferir com as regras de criação"')
+    await p.click('#col-rail button[data-act="regras-criacao"]'); await p.wait_for_timeout(200)
+    ok('Base de criação' in await p.text_content('#validacao') and await p.evaluate(VIS_CSTATUS) > 0, 'ao pedir, as regras voltam a ser conferidas')
+    await p.click('#col-rail button[data-act="regras-criacao"]'); await p.wait_for_timeout(200)
+    ok((await p.text_content('#validacao')).strip() == 'Ficha importada', '"Parar de conferir" volta ao normal')
+    await p.click('#btn-sortear'); await p.wait_for_timeout(500)
+    ok('Base de criação' in await p.text_content('#validacao'), 'sortear de novo faz dela uma ficha comum')
+
+async def celular(p):
+    print('Celular')
+    await nova(p)
+    ok(await p.locator('#secnav [role=tab]').count() == 9 and not await p.locator('#col-rail').is_visible(), 'aba "Vitais e resumo" e lateral escondida')
+    await p.click('#validacao'); await p.wait_for_timeout(300)
+    ok(await p.locator('#col-rail').is_visible() and await p.evaluate(visiveis) == [], '"Base de criação" abre a aba de resumo')
+
+async def main():
+    async with async_playwright() as pw:
+        b = await pw.chromium.launch()
+        c = await b.new_context(viewport={'width': 1280, 'height': 860}); p = await c.new_page()
+        erros = []; p.on('pageerror', lambda e: erros.append(str(e)))
+        await p.goto(SITE); await p.wait_for_timeout(800)
+        await abas(p); await rolagem_e_foco(p); await desfazer(p); await importada(p)
+        cm = await b.new_context(viewport={'width': 390, 'height': 844}); pm = await cm.new_page()
+        pm.on('pageerror', lambda e: erros.append(str(e)))
+        await pm.goto(SITE); await pm.wait_for_timeout(800)
+        await celular(pm)
+        ok(not erros, 'sem erros de JavaScript ' + str(erros))
+        await b.close()
+    print('\n' + ('TUDO OK' if not falhas else f'{len(falhas)} FALHA(S)'))
+    raise SystemExit(1 if falhas else 0)
+
+asyncio.run(main())

@@ -46,7 +46,7 @@ button,input,select,textarea{font:inherit; color:inherit}
 
 /* ============ casca: barra global, navegação, menus ============ */
 :root{--nav-h:58px; --tab-h:62px}
-html{scroll-padding-top:calc(var(--nav-h) + 112px)}
+html{scroll-padding-top:calc(var(--nav-h) + 64px)}
 .sr{position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0}
 .pular{position:absolute; left:12px; top:-60px; z-index:200; background:var(--blood); color:#fff; padding:10px 14px; border-radius:6px; font-family:"Barlow Condensed",sans-serif; font-weight:600; letter-spacing:.06em; text-decoration:none}
 .pular:focus{top:10px}
@@ -128,6 +128,37 @@ a.btn{text-decoration:none}
 .mi[hidden]{display:none}
 .menu hr{border:0; border-top:1px solid var(--line); margin:5px 4px}
 
+/* conferência da importação */
+dialog#dlg-conferir{width:min(980px, calc(100vw - 24px))}
+dialog#dlg-conferir[open]{display:flex; flex-direction:column}
+#dlg-conferir-b{overflow:auto; flex:1; min-height:0}
+.imp-resumo p{margin:0 0 8px}
+.imp-alerta{display:flex; gap:8px; align-items:baseline; font-size:14px; color:var(--ink-2)}
+.imp-sec{border-top:1px solid var(--line); padding:14px 0 6px; margin-top:12px}
+.imp-sec h3{font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:16px; letter-spacing:.08em; text-transform:uppercase; margin:0 0 10px; display:flex; gap:8px; align-items:center}
+.imp-n{font-size:13px; color:var(--ink-3); letter-spacing:0}
+.imp-campo.imp-vazio .lbl{color:var(--ink-3)}
+.imp-de{display:block; font-size:12.5px; color:var(--ink-3); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.imp-de.aprox{color:var(--warn)}
+.imp-linha .imp-de{flex-basis:100%; margin:0}
+.imp-campo.aprox .f, .imp-traco.aprox .f, .imp-linha.aprox .f{border-color:var(--warn)}
+.imp-tracos{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px 18px}
+.imp-trilhas{grid-template-columns:repeat(3,minmax(0,1fr))}
+.imp-grupo .lbl{color:var(--blood-ink); border-bottom:1px solid var(--line-2); padding-bottom:3px; margin-bottom:4px}
+.imp-traco{display:flex; align-items:center; gap:8px; padding:3px 0; border-bottom:1px dashed var(--line)}
+.imp-traco .nm{flex:1; min-width:0; font-size:14.5px}
+.imp-traco .nm small{display:block; font-size:11.5px; color:var(--ink-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.imp-traco.imp-vazio .nm{color:var(--ink-3)}
+.imp-traco .f{width:64px; flex:none; text-align:center; padding:4px}
+.imp-linha{display:flex; flex-wrap:wrap; gap:6px 8px; align-items:center; padding:7px 0; border-bottom:1px dashed var(--line)}
+.imp-linha .f{min-width:0}
+.imp-linha select.f{flex:0 1 210px}
+.imp-linha .grow{flex:1 1 180px}
+.imp-linha .num{width:64px; flex:none; text-align:center}
+.imp-rot{font-weight:600; flex:0 1 220px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.imp-val{flex:1 1 160px; min-width:0; color:var(--ink-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+@media (max-width:720px){ .imp-tracos, .imp-trilhas{grid-template-columns:1fr} .imp-linha select.f{flex:1 1 100%} }
+
 /* diálogos */
 dialog.dlg{border:1px solid var(--line-2); border-radius:12px; background:var(--panel); color:var(--ink); padding:0; width:min(640px, calc(100vw - 24px)); max-height:calc(100dvh - 32px); box-shadow:0 24px 60px -20px #000}
 dialog.dlg::backdrop{background:rgba(8,6,12,.62)}
@@ -168,17 +199,22 @@ fieldset.grupo legend{padding:0; margin-bottom:8px}
   body{padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom,0px))}
   .avisos{bottom:calc(var(--tab-h) + 12px + env(safe-area-inset-bottom,0px))}
   .wrap{padding-inline:14px}
-  html{scroll-padding-top:calc(var(--nav-h) + 96px)}
+  html{scroll-padding-top:calc(var(--nav-h) + 64px)}
 }
 .view[hidden]{display:none!important}
 /* grade */
 .grid{display:grid; grid-template-columns:minmax(0,1fr) 288px; gap:22px; align-items:start; margin-top:20px}
-@media (max-width:920px){ .grid{grid-template-columns:1fr} .rail{position:static!important; order:-1} }
+@media (max-width:920px){ .grid{grid-template-columns:1fr} .rail{position:static!important} }
 
 .card{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow)}
 .card + .card{margin-top:16px}
 .card-h{display:flex; align-items:center; gap:10px; padding:11px 14px; border-bottom:1px solid var(--line); flex-wrap:wrap}
 .card-h h2{font-size:15px; text-transform:uppercase; letter-spacing:.11em}
+.cstatus{display:flex; gap:8px; align-items:baseline; margin:0 0 12px; padding:7px 10px; border-radius:7px; font-size:14px; line-height:1.35; background:var(--panel-2); border:1px solid var(--line-2); color:var(--ink-2)}
+.cstatus .pip{flex:none; position:relative; top:-1px}
+.cstatus[data-estado="under"]{border-color:var(--warn); color:var(--ink)}
+.cstatus[data-estado="over"]{border-color:var(--blood); color:var(--ink)}
+.cstatus[data-estado="ok"]{color:var(--ink-3)}
 .card-h .hint{font-family:"Barlow Condensed"; font-size:13px; letter-spacing:.04em; color:var(--ink-3); margin-left:auto}
 .card-b{padding:14px}
 .step{font-family:"Barlow Condensed"; font-weight:700; font-size:12px; letter-spacing:.06em; color:var(--blood-ink);
@@ -436,9 +472,23 @@ body.nv-leitura .so-edicao{display:none!important}
 .secnav{position:sticky; top:calc(var(--nav-h) + env(safe-area-inset-top,0px)); z-index:50; background:var(--panel); border-bottom:1px solid var(--line)}
 .secnav-in{max-width:1240px; margin:0 auto; padding:0 20px; display:flex; gap:2px; overflow-x:auto; scrollbar-width:none}
 .secnav-in::-webkit-scrollbar{display:none}
-.secnav a{display:flex; align-items:center; min-height:48px; padding:0 13px; white-space:nowrap; color:var(--ink-2); text-decoration:none; font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:15px; letter-spacing:.1em; text-transform:uppercase; border-bottom:2px solid transparent}
-.secnav a:hover{color:var(--ink)}
-.secnav a[aria-current="true"]{color:var(--ink); border-bottom-color:var(--blood)}
+.secnav button{background:none; border:0; border-radius:0; cursor:pointer; margin:0}
+.secnav a, .secnav button{display:flex; align-items:center; min-height:48px; padding:0 13px; white-space:nowrap; color:var(--ink-2); text-decoration:none; font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:15px; letter-spacing:.1em; text-transform:uppercase; border-bottom:2px solid transparent}
+.secnav a:hover, .secnav button:hover{color:var(--ink)}
+.secnav a[aria-current="true"], .secnav button[aria-current="true"]{color:var(--ink); border-bottom-color:var(--blood)}
+.secnav button:focus-visible{outline:2px solid var(--blood); outline-offset:-4px}
+/* abas do modo Editar: um ponto âmbar onde ainda falta algo da criação */
+.aba-pend{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--warn); margin-left:7px; flex:none}
+#col-main > .card[hidden]{display:none!important}
+.aba-rodape{display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:18px}
+.aba-rodape .btn{min-height:44px}
+@media (max-width:920px){
+  body.com-abas .rail{display:none}
+  body.com-abas.aba-resumo .rail{display:block}
+  body.com-abas.aba-resumo .rail{order:-1}
+  /* a barra de abas rola para o lado: as bordas esmaecem para mostrar que há mais */
+  .secnav-in{-webkit-mask-image:linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 28px), transparent); mask-image:linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 28px), transparent)}
+}
 
 /* ferramentas de criação: só no modo Editar, numa faixa própria */
 .criacao{display:none; background:var(--blood-soft); border-bottom:1px solid var(--line)}
@@ -450,6 +500,11 @@ body.nv-leitura .criacao{display:none}
 .validacao::before{content:""; width:9px; height:9px; border-radius:50%; background:var(--ok)}
 .validacao[data-estado="aviso"]{color:var(--warn)}
 .validacao[data-estado="aviso"]::before{background:var(--warn)}
+.validacao[data-estado="neutro"]::before{background:var(--line-2)}
+.fh-acoes .seg.hist{flex:none}
+.fh-acoes .seg.hist .btn{padding-inline:10px}
+.fh-acoes .seg.hist .btn svg{margin:0}
+.fh-acoes .seg.hist .btn:disabled{opacity:.4; cursor:default}
 
 /* modo Ver × Editar */
 .ver-grid{display:none; grid-template-columns:minmax(0,1fr) 300px; gap:22px; align-items:start; margin-top:22px}
@@ -462,7 +517,8 @@ body.view-sheet .editor{display:none}
 @media screen{ .ver-grid .sh-mast{display:none} .ver-grid .sh-page{max-width:none} .ver-grid .sh-page + .sh-page{margin-top:6px} }
 @media (max-width:920px){ .ver-grid{grid-template-columns:minmax(0,1fr)} .mesa{position:static; order:-1} }
 #view-ficha .wrap{padding-top:0}
-[data-secao]{scroll-margin-top:calc(var(--nav-h) + 64px)}
+/* o html já desconta a barra global e a de seções (scroll-padding); somar as duas deixava o quadro longe do topo */
+[data-secao]{scroll-margin-top:0}
 
 @media (max-width:760px){
   .fh-in{padding:8px 14px 0}
@@ -759,6 +815,10 @@ fieldset.xp-comprar legend{padding:0 6px}
               <button type="button" class="btn seg-b" id="modo-editar" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Editar</button>
             </div>
             <span class="fh-div so-edicao" aria-hidden="true"></span>
+            <div class="seg hist so-edicao" role="group" aria-label="Histórico de mudanças">
+              <button type="button" class="btn seg-b" id="btn-hist-desfazer" disabled aria-label="Desfazer" title="Desfazer (Ctrl+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+              <button type="button" class="btn seg-b" id="btn-hist-refazer" disabled aria-label="Refazer" title="Refazer (Ctrl+Shift+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+            </div>
             <div class="menu-w">
               <button type="button" class="btn" id="btn-exportar" aria-label="Exportar" aria-haspopup="menu" aria-expanded="false" aria-controls="menu-exportar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></svg><span class="rot-longo">Exportar</span></button>
               <div class="menu" id="menu-exportar" role="menu" aria-label="Exportar" hidden>
@@ -830,7 +890,7 @@ fieldset.xp-comprar legend{padding:0 6px}
 </nav>
 
 <div class="avisos no-print" id="avisos" role="status" aria-live="polite"></div>
-<input type="file" id="arquivo-importar" accept=".json,application/json,.pdf,application/pdf" hidden>
+<input type="file" id="arquivo-importar" accept=".json,application/json,.pdf,application/pdf,.txt,text/plain,.md" hidden>
 
 <dialog class="dlg" id="dlg-nova" aria-labelledby="dlg-nova-t">
   <form method="dialog" id="form-nova">
@@ -872,14 +932,20 @@ fieldset.xp-comprar legend{padding:0 6px}
 <dialog class="dlg" id="dlg-importar" aria-labelledby="dlg-importar-t">
   <div class="dlg-h"><h2 id="dlg-importar-t">Importar ficha</h2><button type="button" class="icob" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
   <div class="dlg-b">
-    <p class="note" style="margin:0 0 12px">A ficha importada entra como ficha nova — nada que você já tem é sobrescrito.</p>
-    <button type="button" class="btn lg primary" data-acao="escolher-arquivo" style="width:100%">Escolher arquivo (.pdf ou .json)</button>
+    <p class="note" style="margin:0 0 12px">Funciona com fichas de Vampiro de qualquer lugar e em vários idiomas: o PDF preenchível oficial ou de fã, a ficha deste app, o JSON do Foundry VTT ou o texto copiado de um site. Antes de criar, você confere o que foi lido. A ficha entra como nova — nada que você já tem é sobrescrito.</p>
+    <button type="button" class="btn lg primary" data-acao="escolher-arquivo" style="width:100%">Escolher arquivo (.pdf, .json ou .txt)</button>
     <p class="olho" style="margin:18px 0 6px">Ou cole o texto da ficha</p>
-    <label class="sr" for="importar-texto">Texto da ficha (JSON)</label>
-    <textarea class="f" id="importar-texto" style="min-height:120px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px" spellcheck="false" placeholder='{"sistema":"vampiro", …}'></textarea>
+    <label class="sr" for="importar-texto">Texto da ficha</label>
+    <textarea class="f" id="importar-texto" style="min-height:140px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px" spellcheck="false" placeholder="Name: Lucia&#10;Clan: Toreador&#10;Strength 2  Dexterity 3  Stamina 2&#10;Athletics ●●○○○&#10;…ou o JSON da ficha"></textarea>
     <p class="err" id="importar-msg" role="alert" style="margin:6px 0 0"></p>
   </div>
-  <div class="dlg-p"><button type="button" class="btn ghost" data-fechar>Cancelar</button><button type="button" class="btn" data-acao="importar-texto">Importar texto</button></div>
+  <div class="dlg-p"><button type="button" class="btn ghost" data-fechar>Cancelar</button><button type="button" class="btn" data-acao="importar-texto">Ler texto</button></div>
+</dialog>
+
+<dialog class="dlg" id="dlg-conferir" aria-labelledby="dlg-conferir-t">
+  <div class="dlg-h"><h2 id="dlg-conferir-t">Conferir a importação</h2><button type="button" class="icob" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="dlg-b" id="dlg-conferir-b"></div>
+  <div class="dlg-p"><button type="button" class="btn ghost" data-fechar>Cancelar</button><button type="button" class="btn primary" id="imp-criar">Criar ficha</button></div>
 </dialog>
 
 <dialog class="dlg dlg-largo" id="dlg-xp" aria-labelledby="dlg-xp-t">
@@ -911,3 +977,4 @@ fieldset.xp-comprar legend{padding:0 6px}
 <script src="app.js"></script>
 <script src="experiencia.js"></script>
 <script src="interface.js"></script>
+<script src="importar.js"></script>

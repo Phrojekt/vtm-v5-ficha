@@ -15,7 +15,8 @@ const corpo = pagina.slice(corte).replace(/<script src="[^"]+"><\/script>\s*/g, 
 
 const FONTES = ['disciplinas.js', 'vantagens.js', 'loresheets.js', 'dados.js',
                 'dados-extra.js', 'contexto.js', 'cacador.js',
-                'pdf-lib.min.js', 'modelo-pdf.js', 'pdf-ficha.js', 'nuvem.js', 'app.js', 'experiencia.js', 'interface.js'];
+                'pdf-lib.min.js', 'modelo-pdf.js', 'pdfjs.min.js', 'pdfjs.worker.min.js',
+                'pdf-ficha.js', 'nuvem.js', 'app.js', 'experiencia.js', 'interface.js', 'importar.js'];
 
 const molde = (miolo) => `<!doctype html>
 <html lang="pt-BR">
@@ -34,7 +35,8 @@ ${miolo}
 /* O modelo do PDF (1,7 MB) e a pdf-lib (0,5 MB) são carregados só quando alguém exporta,
    imprime no modelo ou importa um PDF (garantirPdf, em app.js). Ficam fora da página
    publicada e do ficha.html; o arquivo único continua com tudo embutido. */
-const SOB_DEMANDA = ['pdf-lib.min.js', 'modelo-pdf.js'];
+/* o pdf.js (1,4 MB) lê fichas de outros lugares na importação: também só sob demanda */
+const SOB_DEMANDA = ['pdf-lib.min.js', 'modelo-pdf.js', 'pdfjs.min.js', 'pdfjs.worker.min.js'];
 const NA_PAGINA = FONTES.filter(f => !SOB_DEMANDA.includes(f));
 const crypto = require('crypto');
 
@@ -62,7 +64,7 @@ console.log('ficha-de-sangue.html (' + kb(unico) + ') — arquivo único, para e
 fs.mkdirSync(path.join(raiz, 'deploy', 'pdf'), { recursive: true });
 const versaoArq = f => crypto.createHash('sha256').update(fs.readFileSync(path.join(raiz, 'src', f))).digest('hex').slice(0, 10);
 for (const f of SOB_DEMANDA) fs.copyFileSync(path.join(raiz, 'src', f), path.join(raiz, 'deploy', 'pdf', f));
-const fsPdf = `<script>window.FS_PDF = { lib: 'pdf/pdf-lib.min.js?v=${versaoArq('pdf-lib.min.js')}', modelo: 'pdf/modelo-pdf.js?v=${versaoArq('modelo-pdf.js')}' };</script>`;
+const fsPdf = `<script>window.FS_PDF = { lib: 'pdf/pdf-lib.min.js?v=${versaoArq('pdf-lib.min.js')}', modelo: 'pdf/modelo-pdf.js?v=${versaoArq('modelo-pdf.js')}', pdfjs: 'pdf/pdfjs.min.js?v=${versaoArq('pdfjs.min.js')}', pdfjsWorker: 'pdf/pdfjs.worker.min.js?v=${versaoArq('pdfjs.worker.min.js')}' };</script>`;
 const publicada = molde(fsPdf + '\n' + embutir(NA_PAGINA));
 fs.writeFileSync(path.join(raiz, 'deploy', 'index.html'), publicada, 'utf8');
 console.log('deploy/index.html (' + kb(publicada) + ', antes ' + kb(unico) + ') + deploy/pdf/ sob demanda');

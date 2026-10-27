@@ -1,0 +1,19 @@
+Nombre: Lucía Ferrer     Jugador: Marta
+Clan: Lasombra     Generación: 13     Secta: Anarquistas
+Depredador: Gato callejero
+Fuerza ●●●○○  Carisma ●●○○○  Inteligencia ●●○○○
+Destreza ●●○○○  Manipulación ●●●○○  Astucia ●●●○○
+Resistencia ●●●●○  Compostura ●●○○○  Resolución ●○○○○
+HABILIDADES
+Pelea 3   Intimidación 3 (Extorsión)   Callejeo 2
+Atletismo 2   Sigilo 1   Latrocinio 2   Consciencia 1   Ocultismo 1
+Disciplinas
+Oblivion ●●  (Sombra de Ceniza? Shadow Cloak)
+Potencia ●
+Ventajas
+Contactos ●●● (criminales)
+Defectos
+Enemigo ●
+Humanidad 6   Ansia 1
+Convicciones
+Nunca abandonar a un hermano → Diego, su hermano
