@@ -28,7 +28,7 @@ function cardCredoImpeto() {
   const cr = CREDOS[S.credo], im = IMPETOS[S.impeto];
   return `
   <div class="card">
-    <div class="card-h"><span class="step">1</span><h2>Conceito &amp; chamado</h2></div>
+    <div class="card-h"><h2>Conceito &amp; chamado</h2></div>
     <div class="card-b">
       <div class="fields c3">
         <div><label class="lbl" for="f-nome">Nome</label><input class="f" id="f-nome" data-bind="meta.nome" value="${esc(S.meta.nome)}"></div>
@@ -66,7 +66,7 @@ function cardTrunfos() {
 
   return `
   <div class="card">
-    <div class="card-h"><span class="step">4</span><h2>Trunfos</h2>
+    <div class="card-h"><h2>Trunfos</h2>
       <span class="hint">dois Trunfos, ou um Trunfo e duas Distinções</span></div>
     <div class="card-b">
       ${S.trunfos.length ? S.trunfos.map((t, idx) => {
@@ -116,8 +116,8 @@ function railCacador() {
     return `<div class="bline"><span class="pip ${st}"></span><span class="t">${t}</span><span class="v ${st}">${atual}/${alvo}</span></div>`;
   };
   const linhaD = (t, d) => {
-    const st = d.ok ? 'ok' : 'under';
-    const msg = d.ok ? 'certo' : [d.falta.length ? 'falta ' + d.falta.join(', ') : '', d.sobra.length ? 'sobra ' + d.sobra.join(', ') : ''].filter(Boolean).join(' · ');
+    const st = d.ok ? 'ok' : (d.nExcesso ? 'over' : 'under');
+    const msg = d.ok ? 'certo' : [d.nFalta ? `falta${d.nFalta > 1 ? 'm' : ''} ${d.nFalta}` : '', d.nExcesso ? `${d.nExcesso} a mais` : ''].filter(Boolean).join(' · ');
     return `<div class="bline"><span class="pip ${st}"></span><span class="t">${t}</span><span class="v ${st}">${esc(msg)}</span></div>`;
   };
   const medidor = (nome, valor, cor) => `
@@ -127,19 +127,14 @@ function railCacador() {
     </div>`;
 
   morph(el('col-rail'), `
-  <div class="card">
+  <div class="card" data-mesa>
     <div class="card-h"><h2>Vitais</h2></div>
     <div class="card-b">
-      <div class="vital">
-        <div class="vital-h"><span class="lbl">Vitalidade</span><span class="n">${maxSaude()}<small> vigor+3</small></span></div>
-        ${trilha('saude', maxSaude(), S.saude.sup, S.saude.agg)}
-      </div>
-      <div class="vital">
-        <div class="vital-h"><span class="lbl">Força de Vontade</span><span class="n">${maxVontade()}<small> auto+det</small></span></div>
-        ${trilha('vontade', maxVontade(), S.vontade.sup, S.vontade.agg)}
-      </div>
+      ${blocoDano('saude')}
+      ${blocoDano('vontade')}
       ${medidor('Desespero', S.desespero, 'var(--hunger)')}
       ${medidor('Perigo', S.perigo, 'var(--gold)')}
+      ${blocoRegistro()}
     </div>
   </div>
 

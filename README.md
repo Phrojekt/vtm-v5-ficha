@@ -21,7 +21,7 @@ Três lugares fixos, na barra de cima (no celular, nas abas de baixo): **Fichas*
 | Endereço | O que é |
 |---|---|
 | `#/fichas` | **Minhas fichas**: só as suas — nome, clã (ou credo), geração e conceito, com **Ver ficha**. Busca, filtro por sistema e crônica e ordem ficam numa faixa própria; **Nova ficha** e **Importar** ficam no cabeçalho. |
-| `#/ficha/<id>` | A ficha em página própria, no modo **Ver**. O painel *Na mesa* marca dano, Fome e Humanidade sem entrar em edição. |
+| `#/ficha/<id>` | A ficha em página própria, no modo **Jogar** (o antigo *Ver*). O painel *Na mesa* marca dano, Fome e Humanidade sem entrar em edição. |
 | `#/ficha/<id>/editar` | O modo **Editar**. As ferramentas de criação (Vampiro/Caçador, *Sortear de novo*, *Forja*, *Desfazer sorteio* e o resumo da *Base de criação*) aparecem só aqui, numa faixa separada. |
 | `#/cronicas`, `#/cronicas/<id>` | A lista de crônicas e o painel de uma delas: **Abrir o mapa**, convite, *Fichas do grupo*, *Jogadores*, *Atividade* e *Configurar* (narrador) ou *Fichas do grupo* e *Pessoas* (jogador). |
 | `#/conta` | Sincronizar, trocar senha, tema, instalar o app e sair. |
@@ -32,9 +32,20 @@ Privacidade: Minhas fichas só lista as fichas da conta aberta (ou as que ainda 
 
 Acessibilidade: menus com teclado (setas, Home/End, Esc devolve o foco), diálogos nativos, *Pular para o conteúdo*, títulos em ordem, rótulos em todos os campos, contraste AA nos dois temas e alvos de toque maiores em tela de toque. Os avisos aparecem embaixo e são lidos por leitores de tela. As telas foram desenhadas antes no Claude Design (canvas "Ficha de Sangue — nova interface").
 
+### Na mesa (modo Jogar)
+
+- **Vitalidade e Força de Vontade com dano progressivo.** Abaixo de cada trilha: quantidade (− 1 +), **Sofrer** superficial/agravado e **Curar** superficial/agravado. Segue o V5: superficial ocupa caixa vazia; sem caixa vazia, cada ponto novo converte um superficial em agravado. O estado aparece embaixo — *Ileso/Ferido*, **Debilitado** (−2 dados em testes Físicos; na FV, Sociais e Mentais) e **Torpor** quando a Vitalidade está toda agravada. Em vampiro, *Dividir superficial pela metade* (ligado por padrão) arredonda para cima, e **Remendar com sangue** faz um Teste de Fome e cura o Dano Recuperado da Potência de Sangue. Clicar direto na caixa continua funcionando (vazia → superficial → agravado → vazia).
+- **Teste de Fome** (o *Rouse Check*; antes aparecia como "Provocação"): um d10, 6 ou mais passa, senão a Fome sobe. Com Fome 5 o botão desliga. Nos cartões de poder, o teste usa a **Rerrolagem de Sangue** quando o nível do poder está dentro dela (rola dois, fica com o melhor).
+- **Registro da cena**: as últimas marcas de dano e Testes de Fome, com hora (`S.registroMesa`, as 12 últimas).
+- **Disciplinas em cartões**: cada poder escolhido mostra o resumo, **Custo, Parada, Resistência e Duração**, Amálgama e livro, e um campo **Suas anotações** (em Editar) para colar o texto completo ou como você usa (`S.notasPoder`). Em Editar, os poderes ainda não escolhidos ficam numa lista recolhível ("Escolha mais um poder", aberta enquanto faltar) e os de nível mais alto noutra.
+
+### Avisos de criação
+
+Cada quadro de Atributos e Habilidades tem um **medidor** — uma casa por traço que a criação pede em cada nível (4 · 3 · 2 · 1) — e uma frase em português: *"Faltam 1 Atributo com 4, 3 com 3 e 4 com 2."* ou *"2 Atributos com 4: a criação permite só um."* A lateral resume em *faltam N* / *N a mais*. Pontos acima da criação só são lidos como experiência quando a ficha **tem XP registrado** (XP total ou compras); numa ficha sem XP eles são erro de distribuição, e *Notas e XP* oferece registrar o XP caso tenham vindo de experiência. As abas de Editar são numeradas e ganham ✓ quando ficam prontas; a faixa diz *Criação: N pendências* ou *Criação: tudo certo*.
+
 ### Experiência e especializações
 
-**Gastar experiência** (no painel *Na mesa*, em *Ficha ⋯* ou em *Notas & experiência*) abre a tabela de custos do livro e uma compra passo a passo: some o XP ganho na sessão, escolha o que subir (Atributo, Habilidade, Especialização, Disciplina, Ritual ou Cerimônia, Vantagem ou Potência de Sangue) e o app mostra o custo — Disciplina já com × 5 do clã, × 7 de fora ou × 6 Caitiff —, aplica e desconta. Sem XP suficiente, o botão fica desligado e diz quanto falta. Cada compra entra no mesmo registro do sorteio (`S.xpCompras`), então a *Base de criação* continua conferindo a ficha do dia do Abraço; dá para desfazer a última. Em Caçador o diálogo soma o XP, mas a compra guiada é só de Vampiro.
+**Gastar experiência** (no painel *Na mesa*, em *Mais ⋯* ou em *Notas & experiência*) abre a tabela de custos do livro e uma compra passo a passo: some o XP ganho na sessão, escolha o que subir (Atributo, Habilidade, Especialização, Disciplina, Ritual ou Cerimônia, Vantagem ou Potência de Sangue) e o app mostra o custo — Disciplina já com × 5 do clã, × 7 de fora ou × 6 Caitiff —, aplica e desconta. Sem XP suficiente, o botão fica desligado e diz quanto falta. Cada compra entra no mesmo registro do sorteio (`S.xpCompras`), então a *Base de criação* continua conferindo a ficha do dia do Abraço; dá para desfazer a última. Em Caçador o diálogo soma o XP, mas a compra guiada é só de Vampiro.
 
 | Traço | Custo |
 |---|---|
@@ -47,7 +58,7 @@ Acessibilidade: menus com teclado (setas, Home/End, Esc devolve o foco), diálog
 | Vantagem | 3 por ponto |
 | Potência de Sangue | novo nível × 10 |
 
-**Especializações** têm um quadro próprio no modo Editar (e uma lista no modo Ver): todas de uma vez, com sugestões por Habilidade, várias na mesma Habilidade e aviso quando falta a obrigatória de Ofícios, Erudição, Performance ou Ciência.
+**Especializações** têm um quadro próprio no modo Editar (e uma lista no modo Jogar): todas de uma vez, com sugestões por Habilidade, várias na mesma Habilidade e aviso quando falta a obrigatória de Ofícios, Erudição, Performance ou Ciência.
 
 ## Mapa da crônica (o antigo Belmont Noturno)
 
@@ -73,7 +84,8 @@ Com conta (email e senha), as fichas sobem para a API em `api/` e aparecem em qu
 - **Crônicas:** quem cria narra e recebe um código de convite; o jogador entra com o código em **Crônicas** e põe uma ficha dele ali (na própria tela da crônica, ou em *Ficha ⋯ → Crônica e compartilhar*). O narrador acompanha as fichas do grupo.
 - **Link de leitura:** *Criar link* gera um endereço que mostra a ficha a quem não tem conta; *Desligar* revoga.
 - **Importar** (em Minhas fichas) aceita o PDF salvo pelo app, um `.json` ou o texto colado. Um PDF de uma ficha que mudou depois de salvo entra como ficha nova, em vez de sobrescrever.
-- **Desfazer / refazer**: botões no topo da ficha (Editar e Ver) e Ctrl+Z, Ctrl+Shift+Z ou Ctrl+Y. Guarda os últimos 40 passos da ficha aberta; digitação seguida conta como um passo; dentro de um campo de texto o atalho é o do navegador. O desfeito é o que fica salvo.
+- **Criação + experiência**: a conferência de criação aceita fichas evoluídas. Se os pontos cabem em "uma criação válida + experiência", os pontos a mais são lidos como XP pelo custo do livro (Atributo novo nível × 5, Habilidade × 3, Disciplina do clã × 5 / de fora × 7 / Caitiff × 6, Vantagem 3 por ponto, Especialização 3), na leitura mais barata. Os quadros dizem "Os pontos acima da criação equivalem a N XP" em vez de "falta/sobra" (só em ficha com XP registrado; veja *Avisos de criação*); só vira aviso o que nenhuma experiência explica (um nível de criação que falta). Se esse XP não está no XP gasto, Notas e XP mostra o total e o botão **Contar N XP como gastos** (ou **Registrar N XP (total e gasto)**, quando nem o total cobre). Potência de Sangue fica fora: nas idades antigas ela vem da idade, não de XP. Conta em `orcamentoXP()`, em `src/app.js`.
+- **Desfazer / refazer**: botões no topo da ficha (Editar e Jogar) e Ctrl+Z, Ctrl+Shift+Z ou Ctrl+Y. Guarda os últimos 40 passos da ficha aberta; digitação seguida conta como um passo; dentro de um campo de texto o atalho é o do navegador. O desfeito é o que fica salvo.
 - **Ficha importada de outro lugar** não mostra avisos de criação (a faixa diz "Ficha importada"): ela pode já ter experiência gasta e o Tipo de Predador embutido, e as contas dariam avisos falsos. "Conferir com as regras de criação", na lateral, liga a conferência; sortear de novo transforma em ficha comum.
 - **Fichas de outros lugares** (`src/importar.js`): qualquer PDF preenchível de Vampiro (oficial ou de fã, em português, inglês, espanhol, francês, alemão ou italiano), o JSON do Foundry VTT (sistema WoD5e) ou de outro app, e texto colado ("Strength 3", "Força ●●●○○", "Clan: Brujah"). Os campos são reconhecidos pelo nome; os de nome genérico ("Check Box 37") pela posição — o texto impresso à esquerda da fileira de bolinhas, ou o campo ao lado (nome da Disciplina, da Vantagem). Poderes, Vantagens, Defeitos, clãs e predadores são casados com as listas do app pelo nome em português ou inglês, com tolerância a um erro de digitação. PDF sem campos é lido como texto. Antes de criar a ficha abre **Conferir a importação**: mostra cada termo lido ("lido de “Strength”"), marca em âmbar o que veio por aproximação e lista o que não foi reconhecido, para a pessoa dizer o que é ou ignorar. O leitor de PDF é o [pdf.js](https://mozilla.github.io/pdf.js/) (Apache 2.0, `src/pdfjs.min.js` + `src/pdfjs.worker.min.js`, 1,4 MB), baixado só na hora de importar um PDF que não é deste app.
 

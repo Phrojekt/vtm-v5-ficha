@@ -133,11 +133,11 @@ async def importada(p):
     ok(await p.locator('#secnav .aba-pend').count() == 0 and await p.evaluate(VIS_CSTATUS) == 0, 'sem pontos de pendência nem linhas de criação')
     ok(await p.locator('#col-rail button[data-act="regras-criacao"]').count() == 1, 'lateral oferece "Conferir com as regras de criação"')
     await p.click('#col-rail button[data-act="regras-criacao"]'); await p.wait_for_timeout(200)
-    ok('Base de criação' in await p.text_content('#validacao') and await p.evaluate(VIS_CSTATUS) > 0, 'ao pedir, as regras voltam a ser conferidas')
+    ok('Criação' in await p.text_content('#validacao') and await p.evaluate(VIS_CSTATUS) > 0, 'ao pedir, as regras voltam a ser conferidas')
     await p.click('#col-rail button[data-act="regras-criacao"]'); await p.wait_for_timeout(200)
     ok((await p.text_content('#validacao')).strip() == 'Ficha importada', '"Parar de conferir" volta ao normal')
     await p.click('#btn-sortear'); await p.wait_for_timeout(500)
-    ok('Base de criação' in await p.text_content('#validacao'), 'sortear de novo faz dela uma ficha comum')
+    ok('Criação' in await p.text_content('#validacao'), 'sortear de novo faz dela uma ficha comum')
 
 async def celular(p):
     print('Celular')
@@ -146,13 +146,59 @@ async def celular(p):
     await p.click('#validacao'); await p.wait_for_timeout(300)
     ok(await p.locator('#col-rail').is_visible() and await p.evaluate(visiveis) == [], '"Base de criação" abre a aba de resumo')
 
+BASE_VALIDA = """() => {
+  S.meta.nome = 'Teste'; S.meta.cla = 'Brujah'; S.meta.predador = 'Vira-lata'; S.meta.geracao = 12;
+  Object.assign(S.atr, {forca:4, destreza:3, vigor:3, carisma:3, manipulacao:2, autocontrole:2, inteligencia:2, raciocinio:2, determinacao:1});
+  Object.keys(S.hab).forEach(k => S.hab[k] = 0);
+  Object.assign(S.hab, {briga:3, intimidacao:3, atletismo:3, manha:2, furtividade:2, conducao:2, armasbrancas:2, lideranca:2, prontidao:1, persuasao:1, labia:1, perspicacia:1, etiqueta:1, politica:1, ocultismo:1});
+  S.distribHab = 'balanceado'; Object.keys(S.esp).forEach(k => S.esp[k] = ''); S.esp.briga = 'Agarrões'; S.esp.intimidacao = 'Assaltos';
+  S.disc = [{nome:'Potência', nivel:2, poderes:['Golpe Letal','Proeza'], rituais:''}, {nome:'Presença', nivel:1, poderes:['Deslumbrar'], rituais:''}, {nome:'Celeridade', nivel:1, poderes:['Graça Felina'], rituais:''}];
+  S.vant = [{nome:'Contatos', pontos:3, nota:'', fonte:'user'}, {nome:'Recursos', pontos:2, nota:'', fonte:'user'}, {nome:'Refúgio', pontos:2, nota:'', fonte:'user'}];
+  S.def = [{nome:'Inimigo', pontos:2, nota:'', fonte:'user'}];
+  S.xpTotal = 0; S.xpGasto = 0; S.xpCompras = []; render(); }"""
+chip = lambda p: p.evaluate("document.getElementById('validacao').textContent")
+
+async def experiencia(p):
+    print('Criação + experiência')
+    await nova(p)
+    await p.evaluate(BASE_VALIDA); await p.wait_for_timeout(100)
+    ok('tudo certo' in await chip(p), 'ficha de criação válida: tudo certo')
+    # subir à mão, sem registrar: Destreza 3→4 (20), Briga 3→4 (12), Ocultismo 1→2 (6), Fortitude nova (7), uma Vantagem (3) = 48
+    await p.evaluate("""() => { S.atr.destreza = 4; S.hab.briga = 4; S.hab.ocultismo = 2;
+      S.disc.push({nome:'Fortitude', nivel:1, poderes:['Resiliência'], rituais:''}); S.vant[0].pontos = 4; S.xpTotal = 70; render(); }""")
+    x = await p.evaluate('orcamentoXP()')
+    ok(x['atr']['xp'] == 20 and x['hab']['xp'] == 18 and x['vant']['xp'] == 3, f'custos pela tabela do livro (Atributos {x["atr"]["xp"]}, Habilidades {x["hab"]["xp"]}, Vantagens {x["vant"]["xp"]})')
+    ok(x['disc']['xp'] == 7, f'Disciplinas: Celeridade é o ponto do Tipo de Predador; só Fortitude, de fora do clã, custa ×7 = 7 ({x["disc"]["xp"]})')
+    ok((await chip(p)).strip() == 'Criação: 1 pendência', 'pontos acima da criação viram uma pendência só: o XP fora do gasto')
+    await p.click('#aba-atributos'); await p.wait_for_timeout(80)
+    ok('equivalem a 20 XP' in await p.evaluate(f"[...document.querySelectorAll('.cstatus')].filter(e => e.offsetParent).map(e => e.textContent).join()"), 'Atributos dizem "equivalem a 20 XP", não "falta/sobra"')
+    ok(await p.locator('#aba-notas .aba-pend').count() == 1 and await p.locator('#aba-atributos .aba-pend').count() == 0, 'a pendência vai para Notas e XP')
+    await p.click('#aba-notas'); await p.click('#col-main [data-act="xp-implicito"]'); await p.wait_for_timeout(200)
+    ok(await p.evaluate('[S.xpTotal, S.xpGasto]') == [70, 48] and 'tudo certo' in await chip(p), '"Contar 48 XP como gastos": disponível 22 e tudo certo')
+    await p.keyboard.press('Control+z'); await p.wait_for_timeout(150)
+    ok(await p.evaluate('S.xpGasto') == 0, 'dá para desfazer')
+    await p.evaluate("() => { S.xpTotal = 0; render(); }")
+    await p.click('#aba-notas')
+    ok('Registrar 48 XP (total e gasto)' in await p.text_content('#col-main [data-act="xp-implicito"]'), 'sem XP total, oferece registrar total e gasto')
+    await p.evaluate("() => { S.atr.forca = 3; S.atr.destreza = 3; render(); }")
+    await p.click('#aba-atributos'); await p.wait_for_timeout(80)
+    ok(await p.locator('#aba-atributos .aba-pend').count() == 1 and 'Falta 1 Atributo com 4' in await p.evaluate("[...document.querySelectorAll('.cstatus')].filter(e => e.offsetParent).map(e => e.textContent).join()"), 'falta de verdade (nenhum Atributo em 4) continua aviso')
+    # fichas sorteadas, de todas as idades: experiência registrada pelo sorteio, sem aviso falso
+    r = await p.evaluate("""() => { let ruins = []; for (const mar of Object.keys(MAR_DO_TEMPO)) for (let i = 0; i < 4; i++) {
+        S.forja = novaForja(); S.forja.mar = mar; S.sistema = 'vampiro'; sortear();
+        if (!/tudo certo/.test(document.getElementById('validacao').textContent)) ruins.push(mar); }
+      for (let i = 0; i < 4; i++) { S.forja = novaForja(); S.forja.sistema = 'cacador'; S.sistema = 'cacador'; sortear();
+        if (!/tudo certo/.test(document.getElementById('validacao').textContent)) ruins.push('cacador'); }
+      return ruins; }""")
+    ok(not r, f'fichas sorteadas de todas as idades e de Caçador saem "tudo certo" ({r})')
+
 async def main():
     async with async_playwright() as pw:
         b = await pw.chromium.launch()
         c = await b.new_context(viewport={'width': 1280, 'height': 860}); p = await c.new_page()
         erros = []; p.on('pageerror', lambda e: erros.append(str(e)))
         await p.goto(SITE); await p.wait_for_timeout(800)
-        await abas(p); await rolagem_e_foco(p); await desfazer(p); await importada(p)
+        await abas(p); await rolagem_e_foco(p); await desfazer(p); await importada(p); await experiencia(p)
         cm = await b.new_context(viewport={'width': 390, 'height': 844}); pm = await cm.new_page()
         pm.on('pageerror', lambda e: erros.append(str(e)))
         await pm.goto(SITE); await pm.wait_for_timeout(800)

@@ -25,6 +25,7 @@ async def main():
 
             # especializações: acrescentar e tirar num quadro próprio
             await pg.evaluate("S.hab.medicina = 2; render()")
+            await pg.click("#aba-especializacoes"); await pg.wait_for_timeout(150)
             await pg.select_option('#add-esp-hab', 'medicina')
             await pg.fill('#add-esp-txt', 'Anestésicos'); await pg.click('[data-act=add-esp]'); await pg.wait_for_timeout(150)
             ok(await pg.evaluate("S.esp.medicina") == 'Anestésicos', 'especialização acrescentada pelo quadro')

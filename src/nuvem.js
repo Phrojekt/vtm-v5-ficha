@@ -1277,7 +1277,7 @@ function nvTelaConta() {
   } else {
     const u = NV.conta.usuario;
     topo = `<div class="conta-cab"><span class="ava" aria-hidden="true">${esc((u.nome || u.email || '?').trim().charAt(0).toUpperCase())}</span>
-      <div style="flex:1;min-width:0"><strong style="font-family:Oswald,sans-serif;font-size:18px">${esc(u.nome)}</strong><div class="nv-sub">${esc(u.email)}</div></div></div>`;
+      <div style="flex:1;min-width:0"><strong style="font-family:var(--f-disp);font-size:20px">${esc(u.nome)}</strong><div class="nv-sub">${esc(u.email)}</div></div></div>`;
   }
   return cab + `<div class="conta-tela">${topo}<div class="lista-acoes">${nvItensConta(false)}</div></div>`;
 }

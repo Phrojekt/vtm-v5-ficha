@@ -23,6 +23,7 @@ function novoEstado() {
     tenets:'', bane:'', comp:'', notas:'',
     humanidade: 7, manchas: 0, fome: 1,
     saude: { sup:0, agg:0 }, vontade: { sup:0, agg:0 },
+    danoMetade: true, registroMesa: [], notasPoder: {},
     bpOverride: null, distribHab: 'balanceado',
     xpTotal: 0, xpGasto: 0,
     /* Caçador: A Revanche */
@@ -135,19 +136,168 @@ function trilha(nome, total, sup, agg) {
   return h + '</div>';
 }
 
+/* ============================================================
+   NA MESA: dano progressivo, Teste de Fome e registro
+   Regras do V5: dano superficial preenche caixas vazias; sem caixa vazia,
+   cada ponto novo transforma um superficial em agravado. Agravado também
+   ocupa uma vazia ou converte um superficial. Trilha cheia = Debilitado
+   (−2 dados); Vitalidade toda agravada = Torpor (vampiro).
+   ============================================================ */
+const MESA = { qtd: { saude: 1, vontade: 1 }, ultimoTeste: null };
+const totalTrilha = n => n === 'saude' ? maxSaude() : maxVontade();
+function aplicarDano(nome, tipo, n) {
+  const o = S[nome], total = totalTrilha(nome);
+  let feitos = 0;
+  for (let k = 0; k < n; k++) {
+    const livres = total - o.sup - o.agg;
+    if (livres > 0) { o[tipo]++; feitos++; }
+    else if (o.sup > 0) { o.sup--; o.agg++; feitos++; }
+  }
+  return feitos;
+}
+function estadoTrilha(nome) {
+  const o = S[nome], total = totalTrilha(nome), marcado = o.sup + o.agg;
+  if (nome === 'saude') {
+    if (o.agg >= total) return { k: 'grave', t: ehCacador() ? 'Morrendo: a Vitalidade está toda agravada' : 'Torpor: a Vitalidade está toda agravada' };
+    if (marcado >= total) return { k: 'debil', t: 'Debilitado: −2 dados em testes Físicos' };
+    if (marcado) return { k: 'ferido', t: 'Ferido' };
+    return { k: 'ok', t: 'Ileso' };
+  }
+  if (o.agg >= total) return { k: 'grave', t: 'Quebrado: a Força de Vontade está toda agravada' };
+  if (marcado >= total) return { k: 'debil', t: 'Debilitado: −2 dados em testes Sociais e Mentais' };
+  if (marcado) return { k: 'ferido', t: 'Abalado' };
+  return { k: 'ok', t: 'Inteira' };
+}
+function registrarMesa(txt) {
+  S.registroMesa = (S.registroMesa || []).concat([{ em: Date.now(), txt }]).slice(-12);
+}
+function blocoDano(nome) {
+  const o = S[nome], total = totalTrilha(nome), st = estadoTrilha(nome), q = MESA.qtd[nome] || 1;
+  const rot = nome === 'saude' ? 'Vitalidade' : 'Força de Vontade';
+  const formula = nome === 'saude' ? 'Vigor + 3' : 'Autocontrole + Determinação';
+  const vamp = nome === 'saude' && !ehCacador();
+  const b = (tipo, d, txt, cls) => `<button type="button" class="btn sm ${cls || ''}" data-act="dano" data-trilha="${nome}" data-tipo="${tipo}" data-d="${d}">${txt}</button>`;
+  return `<div class="vital vital-dano" data-k="${st.k}">
+    <div class="vital-h"><span class="lbl">${rot}</span><span class="n" title="${formula}">${total - o.sup - o.agg}<small>/${total}</small></span></div>
+    ${trilha(nome, total, o.sup, o.agg)}
+    <p class="dano-st" data-k="${st.k}"><b>${esc(st.t)}</b>${o.sup || o.agg ? `<span>${o.sup} superficial · ${o.agg} agravado</span>` : ''}</p>
+    <div class="dano-ctl" role="group" aria-label="Marcar dano em ${rot}">
+      <span class="qtd"><button type="button" data-act="dano-qtd" data-trilha="${nome}" data-d="-1" aria-label="Menos">−</button><output aria-label="Quantidade">${q}</output><button type="button" data-act="dano-qtd" data-trilha="${nome}" data-d="1" aria-label="Mais">+</button></span>
+      <span class="dano-l">Sofrer</span>${b('sup', 1, 'Superficial')}${b('agg', 1, 'Agravado', 'agg')}
+      <span class="dano-l">Curar</span>${b('sup', -1, 'Superficial', 'ghost')}${b('agg', -1, 'Agravado', 'ghost')}
+    </div>
+    ${vamp ? `<div class="dano-extra">
+      <label class="chk"><input type="checkbox" data-act="dano-metade"${S.danoMetade !== false ? ' checked' : ''}> Dividir superficial pela metade</label>
+      <button type="button" class="btn sm" data-act="remendar" title="Um Teste de Fome cura ${tabelaBP().recuperado} de dano superficial">Remendar com sangue</button>
+    </div>` : ''}
+  </div>`;
+}
+const dadoFace = n => `<span class="d10${n >= 6 ? ' ok' : ''}${n === 10 ? ' crit' : ''}">${n}</span>`;
+function blocoFome() {
+  const u = MESA.ultimoTeste;
+  return `<div class="vital vital-fome">
+    <div class="vital-h"><span class="lbl">Fome</span><span class="n fome-n">${S.fome}<small>/5</small></span></div>
+    <span class="dots gotas">${[1,2,3,4,5].map(i => `<button type="button" class="dot gota${i <= S.fome ? ' temp' : ''}" data-dot="fome" data-i="${i}" data-max="5" aria-label="Fome ${i}"></button>`).join('')}</span>
+    <div class="fome-ctl">
+      <button type="button" class="btn sm primary" data-act="teste-fome"${S.fome >= 5 ? ' disabled title="Com Fome 5 não há Teste de Fome: alimente-se ou teste o frenesi"' : ''}>Teste de Fome</button>
+      ${u ? `<span class="ultimo" aria-live="polite">${u.dados.map(dadoFace).join('')} ${u.ok ? 'passou' : 'Fome +1'}</span>` : '<span class="ultimo note">1 dado: 6 ou mais passa</span>'}
+    </div>
+  </div>`;
+}
+function blocoRegistro() {
+  const r = (S.registroMesa || []).slice(-4).reverse();
+  if (!r.length) return '';
+  const hora = ms => { try { return new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
+  return `<div class="vital registro">
+    <div class="vital-h"><span class="lbl">Registro da cena</span><button type="button" class="btn sm ghost" data-act="limpar-registro">Limpar</button></div>
+    <ol>${r.map(x => `<li><time>${hora(x.em)}</time> ${esc(x.txt)}</li>`).join('')}</ol>
+  </div>`;
+}
+/* Teste de Fome (Rouse Check): um dado; 6+ passa, senão a Fome sobe.
+   Poder dentro da Rerrolagem de Sangue: rola dois e fica com o melhor. */
+function testeDeFome(opts) {
+  opts = opts || {};
+  if (S.fome >= 5) {
+    if (typeof uiAviso === 'function') uiAviso('Fome 5: não dá para fazer Teste de Fome. É hora de se alimentar ou de testar o frenesi.');
+    return null;
+  }
+  const bp = tabelaBP();
+  const rer = !!(opts.nivel && bp.rerrolagem && opts.nivel <= bp.rerrolagem);
+  const rola = () => 1 + Math.floor(Math.random() * 10);
+  const dados = rer ? [rola(), rola()] : [rola()];
+  const ok = Math.max(...dados) >= 6;
+  const antes = S.fome;
+  if (!ok) S.fome = Math.min(5, S.fome + 1);
+  MESA.ultimoTeste = { dados, ok };
+  const quem = opts.poder ? opts.poder + ': ' : (opts.motivo ? opts.motivo + ': ' : '');
+  registrarMesa(`${quem}Teste de Fome ${dados.join(' e ')} — ${ok ? 'passou' : `Fome ${antes} → ${S.fome}`}`);
+  return { ok, dados, rer, fome: S.fome };
+}
+function avisoTeste(r, quem) {
+  if (!r || typeof uiAviso !== 'function') return;
+  const dados = r.dados.join(' e ');
+  uiAviso(`${quem ? quem + ' — ' : ''}Teste de Fome: ${dados}${r.rer ? ' (Rerrolagem de Sangue)' : ''}. ${r.ok ? `Passou, a Fome continua em ${r.fome}.` : `Falhou, a Fome sobe para ${r.fome}.`}${!r.ok && r.fome >= 5 ? ' A Besta está à porta.' : ''}`,
+    { rotulo: 'Desfazer', fn: () => histDesfazer() });
+}
+
 /* ---------- orçamento de criação ---------- */
 function contagem(obj, chaves) {
   const c = {}; chaves.forEach(k => { const v = obj[k] || 0; c[v] = (c[v] || 0) + 1; }); return c;
 }
 function diffDistrib(atual, alvo) {
-  const falta = [], sobra = [];
+  const falta = [], sobra = [], faltaN = [], sobraN = [];
   const niveis = new Set([...Object.keys(alvo), ...Object.keys(atual)].map(Number).filter(n => n > 0));
   [...niveis].sort((a, b) => b - a).forEach(n => {
     const d = (atual[n] || 0) - (alvo[n] || 0);
-    if (d < 0) falta.push(`${-d}× ${n}`);
-    if (d > 0) sobra.push(`${d}× ${n}`);
+    if (d < 0) { falta.push(`${-d}× ${n}`); faltaN.push({ n, q: -d }); }
+    if (d > 0) { sobra.push(`${d}× ${n}`); sobraN.push({ n, q: d }); }
   });
-  return { ok: !falta.length && !sobra.length, falta, sobra };
+  /* "sobra" num nível abaixo de um que ainda falta são só pontos que ainda não
+     subiram (numa ficha em branco, oito Atributos em 1). Excesso de verdade é
+     o que passa do nível mais alto que ainda falta preencher. */
+  const maiorFalta = faltaN.length ? Math.max(...faltaN.map(x => x.n)) : 0;
+  const excesso = sobraN.filter(x => x.n > maiorFalta);
+  const nFalta = faltaN.reduce((t, x) => t + x.q, 0);
+  const nExcesso = excesso.reduce((t, x) => t + x.q, 0);
+  return { ok: !falta.length && !sobra.length, falta, sobra, faltaN, sobraN, excesso, nFalta, nExcesso, atual, alvo };
+}
+/* ficha sem experiência registrada: pontos acima da criação são erro de
+   distribuição, não XP. Só uma ficha com XP (total ou compras) é lida como
+   "criação + experiência". */
+const usaXP = () => (Number(S.xpTotal) || 0) > 0 || (S.xpCompras || []).length > 0;
+const NUM_EXT = ['zero', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez'];
+/* "Faltam: 1 Atributo com 4, 3 com 3 e 4 com 2." — em português de mesa */
+function textoDistrib(d, sing, plur) {
+  if (d.ok) return '';
+  const lista = itens => {
+    const partes = itens.map((x, i) => `${x.q}${i === 0 ? ' ' + (x.q > 1 ? plur : sing) : ''} com ${x.n}`);
+    return partes.length > 1 ? partes.slice(0, -1).join(', ') + ' e ' + partes[partes.length - 1] : partes[0];
+  };
+  const frases = [];
+  if (d.faltaN.length) frases.push(`Falta${d.nFalta > 1 ? 'm' : ''} ${lista(d.faltaN)}.`);
+  d.excesso.forEach(x => {
+    const permite = d.alvo[x.n] || 0;
+    const tem = (d.atual[x.n] || 0);
+    frases.push(permite
+      ? `${tem} ${tem > 1 ? plur : sing} com ${x.n}: a criação permite ${permite === 1 ? 'só um' : 'só ' + permite}.`
+      : `${tem} ${tem > 1 ? plur : sing} com ${x.n}: na criação o máximo é ${Math.max(...Object.keys(d.alvo).map(Number))}.`);
+  });
+  return frases.join(' ');
+}
+/* o medidor: uma casa por traço que a criação pede em cada nível */
+function medidorDistrib(d) {
+  if (!d || !d.alvo) return '';
+  const niveis = [...new Set([...Object.keys(d.alvo).map(Number), ...d.excesso.map(x => x.n)])].filter(n => n > 0).sort((a, b) => b - a);
+  const maiorFalta = d.faltaN.length ? Math.max(...d.faltaN.map(x => x.n)) : 0;
+  return `<div class="medidor" aria-hidden="true">${niveis.map(n => {
+    const q = d.alvo[n] || 0, tem = d.atual[n] || 0;
+    const cheias = Math.min(q, tem), extra = n > maiorFalta ? Math.max(0, tem - q) : 0;
+    const st = extra ? 'over' : (cheias === q ? 'ok' : 'under');
+    let casas = '';
+    for (let i = 0; i < q; i++) casas += `<i class="${i < cheias ? 'on' : ''}"></i>`;
+    for (let i = 0; i < extra; i++) casas += '<i class="mais"></i>';
+    return `<span class="md-g" data-estado="${st}"><b>${n}</b>${casas}<small>${Math.min(tem, n > maiorFalta ? tem : q)}/${q}</small></span>`;
+  }).join('')}</div>`;
 }
 function orcamento() {
   const extra = MAR_DO_TEMPO[S.mar] || { vantagens: 0, defeitos: 0 };
@@ -198,39 +348,188 @@ function orcamento() {
     def:  { atual: defAtual,  alvo: 2 + extra.defeitos }
   };
 }
+/* ============================================================
+   CRIAÇÃO + EXPERIÊNCIA
+   Uma ficha evoluída tem pontos acima da criação. Antes, só o que passava
+   por "Gastar experiência" era descontado; o que se subia à mão (ou vinha
+   de outra ficha) aparecia como "falta/sobra". Aqui a pergunta é outra:
+   esta ficha cabe em "uma criação válida + experiência"? Se cabe, quanto
+   XP custam os pontos a mais, pela tabela do livro (Atributo: novo nível
+   × 5; Habilidade × 3; Disciplina do clã × 5, de fora × 7, Caitiff × 6;
+   Vantagem 3 por ponto; Especialização 3).
+   Como cada nível custa o mesmo não importa de onde se parta, o custo de
+   Atributos e Habilidades é o mesmo para qualquer repartição que caiba:
+   soma(custo até o nível atual) − soma(custo até o nível da criação).
+   ============================================================ */
+const triangular = n => n * (n + 1) / 2;
+/* cabe? cada valor da criação precisa de um traço com pelo menos aquele nível */
+function cabeNaCriacao(valores, criacao) {
+  const v = valores.slice().sort((a, b) => b - a), c = criacao.slice().sort((a, b) => b - a);
+  return c.every((x, i) => (v[i] || 0) >= x);
+}
+const multiconjunto = mapa => Object.entries(mapa).flatMap(([n, q]) => Array(q).fill(Number(n)));
+let _xpMemo = { chave: null, r: null };
+function orcamentoXP() {
+  const chave = JSON.stringify([S.atr, S.hab, S.esp, S.disc, S.vant, S.def, S.meta.cla, S.meta.predador, S.meta.geracao, S.mar,
+    S.xpCompras, S.xpTotal, S.xpGasto, S.distribHab, S.bpOverride, S.sistema, S._pred && S._pred.disc]);
+  if (_xpMemo.chave === chave) return _xpMemo.r;
+  const o = orcamento();
+  const r = {};
+
+  /* Atributos: todos começam em 1 */
+  const va = Object.values(baseSemXP(S.atr, 'atr')).map(Number);
+  const ca = multiconjunto(DISTRIB_ATRIBUTOS);
+  r.atr = cabeNaCriacao(va, ca)
+    ? { viavel: true, xp: 5 * (va.reduce((t, n) => t + triangular(n), 0) - ca.reduce((t, n) => t + triangular(n), 0)) }
+    : { viavel: false, xp: 0 };
+  r.atr.exato = o.atr.ok;
+
+  /* Habilidades: a repartição que cabe com menos XP (a escolhida na ficha, se empatar) */
+  const vh = Object.values(baseSemXP(S.hab, 'hab')).map(Number);
+  const somaV = vh.reduce((t, n) => t + triangular(n), 0);
+  let melhor = null;
+  for (const k of [S.distribHab].concat(Object.keys(DISTRIB_HABILIDADES))) {
+    const c = multiconjunto(DISTRIB_HABILIDADES[k].mapa);
+    if (!cabeNaCriacao(vh, c)) continue;
+    const xp = 3 * (somaV - c.reduce((t, n) => t + triangular(n), 0));
+    if (!melhor || xp < melhor.xp) melhor = { viavel: true, xp, distrib: k };
+  }
+  r.hab = melhor || { viavel: false, xp: 0 };
+  r.hab.exato = o.hab.ok;
+
+  const compras = S.xpCompras || [];
+  if (ehCacador()) {
+    r.disc = { julgavel: false, viavel: true, xp: 0 }; r.vant = { viavel: true, xp: 0 }; r.esp = { xp: 0 }; r.bp = { xp: 0 };
+  } else {
+    const pred = PREDADORES[S.meta.predador];
+    /* Disciplinas: 2 + 1 em Disciplinas do clã, +1 do Tipo de Predador numa das dele;
+       o resto é experiência. Testa todas as reparticões e fica com a mais barata. */
+    const cla = S.meta.cla;
+    if (!cla || cla === 'Sangue-ralo' || !CLAS[cla]) r.disc = { julgavel: false, viavel: true, xp: 0 };
+    else {
+      const caitiff = cla === 'Caitiff', doCla = CLAS[cla].disc;
+      const nivel = {};
+      S.disc.forEach(d => { nivel[d.nome] = d.nivel || 0; });
+      compras.filter(c => c.tipo === 'disc' && c.k in nivel).forEach(c => { nivel[c.k] = Math.min(nivel[c.k], c.de); });
+      const nomes = Object.keys(nivel).filter(n => nivel[n] > 0);
+      const mult = n => caitiff ? 6 : (doCla.includes(n) ? 5 : 7);
+      const elegivel = n => caitiff || doCla.includes(n);
+      const predOpcoes = S._pred && S._pred.disc ? [S._pred.disc] : (pred && pred.disc && pred.disc.length ? pred.disc : null);
+      const custo = base => nomes.reduce((t, n) => {
+        const b = base[n] || 0;
+        if (b > nivel[n]) return Infinity;
+        let c = 0; for (let l = b + 1; l <= nivel[n]; l++) c += l * mult(n);
+        return t + c;
+      }, 0);
+      let menor = Infinity;
+      for (const a of nomes) for (const b of nomes) {
+        if (a === b || !elegivel(a) || !elegivel(b)) continue;
+        const preds = predOpcoes ? predOpcoes.filter(p => nomes.includes(p)) : [null];
+        for (const p of preds) {
+          const base = { [a]: 2, [b]: 1 };
+          if (p) base[p] = (base[p] || 0) + 1;
+          menor = Math.min(menor, custo(base));
+        }
+      }
+      r.disc = isFinite(menor) ? { julgavel: true, viavel: true, xp: menor } : { julgavel: true, viavel: false, xp: 0 };
+    }
+
+    /* Vantagens acima do previsto: 3 XP por ponto. Abaixo é falta de verdade. */
+    const dv = o.vant.atual - o.vant.alvo;
+    r.vant = { viavel: dv >= 0, xp: Math.max(0, dv) * 3, exato: dv === 0 };
+
+    /* Especializações além das da criação: uma à escolha, uma em cada Ofícios/Erudição/
+       Performance/Ciência com pontos e a do Tipo de Predador */
+    const total = Object.values(S.esp || {}).reduce((t, v) => t + String(v || '').split(',').map(x => x.trim()).filter(Boolean).length, 0);
+    const gratis = 1 + ESPECIALIDADE_GRATIS.filter(k => (S.hab[k] || 0) > 0).length + (pred && pred.esp && pred.esp.length ? 1 : 0);
+    const espXP = compras.filter(c => c.tipo === 'esp').length;
+    r.esp = { xp: Math.max(0, total - gratis - espXP) * 3 };
+
+    /* Potência de Sangue não entra: nas idades antigas e no sangue-ralo ela vem da idade,
+       não de experiência, e não há como separar uma coisa da outra pela ficha.
+       Comprada em "Gastar experiência", já está no XP registrado. */
+    r.bp = { xp: 0 };
+  }
+
+  /* sem XP na ficha, nada acima da criação é lido como experiência: aparece
+     como erro de distribuição, e Notas e XP oferece registrar o XP se for o caso */
+  const semXP = !usaXP();
+  if (semXP) ['atr', 'hab', 'disc', 'vant'].forEach(k => { if (r[k].xp > 0) r[k] = Object.assign({}, r[k], { viavel: false }); });
+  r.implicito = r.atr.xp + r.hab.xp + r.disc.xp + r.vant.xp + r.esp.xp + r.bp.xp;
+  r.registrado = compras.reduce((t, c) => t + (Number(c.custo) || 0), 0);
+  r.livre = Math.max(0, (Number(S.xpGasto) || 0) - r.registrado);
+  r.faltaXP = Math.max(0, r.implicito - r.livre);
+  r.semRegistro = semXP && r.implicito > 0;
+  r.coberto = semXP ? true : r.faltaXP === 0;
+  r.partes = [['Atributos', r.atr.xp], ['Habilidades', r.hab.xp], ['Disciplinas', r.disc.xp], ['Vantagens', r.vant.xp],
+              ['Especializações', r.esp.xp], ['Potência de Sangue', r.bp.xp]].filter(x => x[1] > 0);
+  _xpMemo = { chave, r };
+  return r;
+}
+/* o resumo de experiência, na lateral e no quadro de Notas e XP */
+function blocoXP(compacto) {
+  const x = orcamentoXP();
+  if (!x.implicito) return '';
+  if (x.semRegistro) return compacto ? '' : `<div class="xp-impl" data-estado="under">
+    <p><span class="pip under" aria-hidden="true"></span>A ficha tem pontos acima da criação (<strong>${x.implicito} XP</strong> pela tabela do livro) e nenhuma experiência registrada, por isso eles aparecem como erro nas abas. Se vieram de experiência, registre:</p>
+    <button type="button" class="btn sm" data-act="xp-implicito">Registrar ${x.faltaXP} XP (total e gasto)</button>
+  </div>`;
+  const lista = x.partes.map(([t, v]) => `${t} ${v}`).join(' · ');
+  const semTotal = (Number(S.xpTotal) || 0) < (x.registrado + x.implicito);
+  return `<div class="xp-impl" data-estado="${x.coberto ? 'ok' : 'under'}">
+    <p><span class="pip ${x.coberto ? 'ok' : 'under'}" aria-hidden="true"></span><strong>${x.implicito} XP</strong> em pontos acima da criação${compacto ? '' : ` <span class="note">(${esc(lista)})</span>`}.
+    ${x.coberto ? 'Cabem no XP gasto.' : `${x.livre ? `Só ${x.livre} estão no XP gasto.` : 'Ainda não estão no XP gasto, por isso aparecem como disponíveis.'}`}</p>
+    ${x.coberto ? '' : `<button type="button" class="btn sm" data-act="xp-implicito">${semTotal ? `Registrar ${x.faltaXP} XP (total e gasto)` : `Contar ${x.faltaXP} XP como gastos`}</button>`}
+  </div>`;
+}
+
 /* linha de instrução ao vivo no topo de cada quadro da criação:
    diz o que ainda falta, em vez de só repetir a regra */
-function faltaSobraTexto(d) {
-  if (d.ok) return '';
-  /* "sobra 8× 1" numa ficha em branco é ruído: esses pontos viram os que faltam
-     acima. Só aponta sobra num nível quando não falta nada acima dele. */
-  const nivel = x => Number(x.split('× ')[1]);
-  const maiorFalta = d.falta.length ? Math.max(...d.falta.map(nivel)) : 0;
-  const sobra = d.sobra.filter(x => nivel(x) > maiorFalta);
-  return [d.falta.length ? 'falta ' + d.falta.join(', ') : '', sobra.length ? 'sobra ' + sobra.join(', ') : ''].filter(Boolean).join(' · ');
-}
-function statusCriacao(estado, texto) {
+function statusCriacao(estado, texto, antes) {
   if (!criacaoConferida()) return '';
-  const ok = estado === 'ok';
-  return `<p class="cstatus" data-estado="${estado}" role="status"><span class="pip ${estado}" aria-hidden="true"></span>${ok ? 'Base de criação: certo' : esc(texto)}</p>`;
+  const ok = estado === 'ok' && !texto;
+  return `<div class="cstatus" data-estado="${estado}" role="status">${antes || ''}<p><span class="pip ${estado}" aria-hidden="true"></span>${ok ? 'Pronto para a criação.' : esc(texto)}</p></div>`;
 }
-function statusDistrib(d) { return statusCriacao(d.ok ? 'ok' : 'under', 'Na criação: ' + faltaSobraTexto(d)); }
+/* "criação + experiência": pontos a mais viram XP; só o que falta é aviso */
+function textoXP(xp) {
+  const x = orcamentoXP();
+  return `Os pontos acima da criação equivalem a ${xp} XP` + (x.coberto ? ', já contados no XP gasto.' : '. Registre esse XP em Notas e XP para fechar a conta.');
+}
+function statusDistrib(d, tipo) {
+  const x = tipo ? orcamentoXP()[tipo] : null;
+  const nomes = tipo === 'hab' ? ['Habilidade', 'Habilidades'] : ['Atributo', 'Atributos'];
+  if (d.ok) return statusCriacao('ok', '', medidorDistrib(d));
+  if (x && x.viavel) return statusCriacao(orcamentoXP().coberto ? 'ok' : 'under', textoXP(x.xp)
+    + (tipo === 'hab' && x.distrib !== S.distribHab ? ` (conta feita como ${DISTRIB_HABILIDADES[x.distrib].nome})` : ''));
+  return statusCriacao(d.nExcesso ? 'over' : 'under', textoDistrib(d, nomes[0], nomes[1]), medidorDistrib(d));
+}
 function statusPontos(atual, alvo, nome) {
   const st = estadoNum(atual, alvo);
-  const txt = st === 'under' ? `faltam ${alvo - atual} ponto${alvo - atual > 1 ? 's' : ''} de ${nome} (${atual}/${alvo})`
-                             : `${atual - alvo} ponto${atual - alvo > 1 ? 's' : ''} além do previsto na criação (${atual}/${alvo})`;
-  return statusCriacao(st, txt);
+  if (st === 'over' && nome === 'Vantagens' && usaXP()) return statusCriacao(orcamentoXP().coberto ? 'ok' : 'under', textoXP((atual - alvo) * 3));
+  const txt = st === 'under' ? `Falta${alvo - atual > 1 ? 'm' : ''} ${alvo - atual} ponto${alvo - atual > 1 ? 's' : ''} de ${nome}: ${atual} de ${alvo} usados.`
+                             : `${atual - alvo} ponto${atual - alvo > 1 ? 's' : ''} de ${nome} a mais: a criação dá ${alvo}, a ficha tem ${atual}.`;
+  return statusCriacao(st, st === 'ok' ? '' : txt);
 }
 
 function statusDisciplinas() {
   const o = orcamento().disc;
-  if (!S.meta.cla) return statusCriacao('under', 'Escolha o clã no quadro 1: ele define quais Disciplinas entram na criação.');
+  if (!S.meta.cla) return statusCriacao('under', 'Escolha o clã em Identidade: ele define quais Disciplinas entram na criação.');
+  const x = orcamentoXP().disc;
+  const discXP = x.julgavel && x.viavel;
   const partes = [];
-  if (o.atual < o.alvo) partes.push(`faltam ${o.alvo - o.atual} ponto${o.alvo - o.atual > 1 ? 's' : ''} (${o.atual}/${o.alvo})`);
-  if (o.atual > o.alvo) partes.push(`${o.atual - o.alvo} ponto${o.atual - o.alvo > 1 ? 's' : ''} além do previsto (${o.atual}/${o.alvo})`);
+  /* com experiência, Disciplinas de fora do clã e pontos a mais são normais */
+  if (discXP) { if (x.xp > 0) partes.push(textoXP(x.xp)); }
+  else {
+    if (o.atual < o.alvo) partes.push(`falta${o.alvo - o.atual > 1 ? 'm' : ''} ${o.alvo - o.atual} ponto${o.alvo - o.atual > 1 ? 's' : ''} (${o.atual} de ${o.alvo})`);
+    if (o.atual > o.alvo) partes.push(`${o.atual - o.alvo} ponto${o.atual - o.alvo > 1 ? 's' : ''} a mais que a criação dá (${o.atual} de ${o.alvo})`);
+    if (o.foraDoCla.length) partes.push('fora do clã na criação: ' + o.foraDoCla.join(', '));
+  }
+  const soXP = partes.length === 1 && discXP && x.xp > 0;
   partes.push(...o.avisos);
-  if (o.foraDoCla.length) partes.push('fora do clã: ' + o.foraDoCla.join(', '));
-  return statusCriacao(partes.length ? 'under' : 'ok', 'Na criação: ' + partes.join(' · '));
+  if (!partes.length) return statusCriacao('ok');
+  const certo = soXP && partes.length === 1 && orcamentoXP().coberto;
+  const txt = partes.join('; ');
+  return statusCriacao(certo ? 'ok' : 'under', soXP ? txt : txt.charAt(0).toUpperCase() + txt.slice(1) + '.');
 }
 function estadoNum(atual, alvo) { return atual === alvo ? 'ok' : (atual > alvo ? 'over' : 'under'); }
 
@@ -243,28 +542,48 @@ function renderRail() {
     const st = estadoNum(atual, alvo);
     return `<div class="bline"><span class="pip ${st}"></span><span class="t">${t}</span><span class="v ${st}">${atual}/${alvo}</span></div>`;
   };
+  const x = orcamentoXP();
+  const linhaMais = (t, xp) => {
+    const st = !xp || x.coberto ? 'ok' : 'under';
+    return `<div class="bline"><span class="pip ${st}"></span><span class="t">${t}</span><span class="v ${st}">${xp ? '+' + xp + ' XP' : 'certo'}</span></div>`;
+  };
+  const linhaXP = (t, d, xi) => d.ok ? linhaD(t, d) : (xi && xi.viavel ? linhaMais(t, xi.xp) : linhaD(t, d));
   const linhaD = (t, d) => {
-    const st = d.ok ? 'ok' : 'under';
-    const msg = d.ok ? 'certo' : [d.falta.length ? 'falta ' + d.falta.join(', ') : '', d.sobra.length ? 'sobra ' + d.sobra.join(', ') : ''].filter(Boolean).join(' · ');
+    const st = d.ok ? 'ok' : (d.nExcesso ? 'over' : 'under');
+    const msg = d.ok ? 'certo' : [d.nFalta ? `falta${d.nFalta > 1 ? 'm' : ''} ${d.nFalta}` : '', d.nExcesso ? `${d.nExcesso} a mais` : ''].filter(Boolean).join(' · ');
     return `<div class="bline"><span class="pip ${st}"></span><span class="t">${t}</span><span class="v ${st}">${esc(msg)}</span></div>`;
   };
 
   morph(el('col-rail'), `
-  <div class="card">
+  ${!criacaoConferida() ? `<div class="card">
+    <div class="card-h"><h2>Ficha importada</h2></div>
+    <div class="card-b">
+      <p class="note" style="margin:0 0 10px">Veio de ${esc(S.importada.origem || 'outro lugar')}. As regras de criação (pontos de Atributos, Habilidades, Disciplinas, Vantagens) não são conferidas: a ficha pode já ter experiência gasta e o Tipo de Predador embutido, e os avisos seriam falsos.</p>
+      <button type="button" class="btn sm" data-act="regras-criacao">Conferir com as regras de criação</button>
+    </div>
+  </div>` : `<div class="card">
+    <div class="card-h"><h2>Base de criação</h2>${S.importada ? '<button type="button" class="btn sm ghost" data-act="regras-criacao" style="margin-left:auto">Parar de conferir</button>' : ''}</div>
+    <div class="card-b">
+      <div class="budget">
+        ${linhaXP('Atributos', o.atr, x.atr)}
+        ${linhaXP('Habilidades', o.hab, x.hab)}
+        ${x.disc.julgavel && x.disc.viavel ? linhaMais('Disciplinas', x.disc.xp) : linha('Disciplinas', o.disc.atual, o.disc.alvo)}
+        ${o.vant.atual > o.vant.alvo && usaXP() ? linhaMais('Vantagens', x.vant.xp) : linha('Vantagens', o.vant.atual, o.vant.alvo)}
+        ${linha('Defeitos', o.def.atual, o.def.alvo)}
+      </div>
+      ${o.disc.foraDoCla.length && !(x.disc.julgavel && x.disc.viavel) ? `<p class="err" style="margin:8px 0 0">Fora do clã na criação: ${esc(o.disc.foraDoCla.join(', '))}</p>` : ''}
+      ${o.disc.avisos.length ? `<p class="err" style="margin:6px 0 0">${esc(o.disc.avisos.join(' · '))}</p>` : ''}
+      ${blocoXP(true)}
+      <p class="note" style="margin:9px 0 0">A conta parte da ficha no dia do Abraço. Pontos acima dela são lidos como experiência, pelo custo do livro; só o que nenhuma experiência explica (um ponto a menos, um nível que falta) vira aviso.</p>
+    </div>
+  </div>`}
+
+  <div class="card" data-mesa>
     <div class="card-h"><h2>Vitais</h2></div>
     <div class="card-b">
-      <div class="vital">
-        <div class="vital-h"><span class="lbl">Vitalidade</span><span class="n">${maxSaude()}<small> vigor+3</small></span></div>
-        ${trilha('saude', maxSaude(), S.saude.sup, S.saude.agg)}
-      </div>
-      <div class="vital">
-        <div class="vital-h"><span class="lbl">Força de Vontade</span><span class="n">${maxVontade()}<small> auto+det</small></span></div>
-        ${trilha('vontade', maxVontade(), S.vontade.sup, S.vontade.agg)}
-      </div>
-      <div class="vital">
-        <div class="vital-h"><span class="lbl">Fome</span><span class="n" style="color:var(--hunger)">${S.fome}</span></div>
-        <span class="dots">${[1,2,3,4,5].map(i => `<button type="button" class="dot${i <= S.fome ? ' temp' : ''}" data-dot="fome" data-i="${i}" data-max="5" aria-label="fome ${i}"></button>`).join('')}</span>
-      </div>
+      ${blocoDano('saude')}
+      ${blocoDano('vontade')}
+      ${blocoFome()}
       <div class="vital">
         <div class="vital-h"><span class="lbl">Humanidade</span><span class="n">${S.humanidade}<small> ${S.manchas ? S.manchas + ' mácula(s)' : ''}</small></span></div>
         <div class="track">${Array.from({length:10}, (_, i) => {
@@ -273,10 +592,11 @@ function renderRail() {
         }).join('')}</div>
         <div style="display:flex;gap:6px;align-items:center;margin-top:7px">
           <span class="lbl" style="margin:0">Máculas</span>
-          <button class="btn sm" data-act="mancha" data-d="-1">−</button>
-          <button class="btn sm" data-act="mancha" data-d="1">+</button>
+          <button class="btn sm" data-act="mancha" data-d="-1" aria-label="Tirar uma mácula">−</button>
+          <button class="btn sm" data-act="mancha" data-d="1" aria-label="Marcar uma mácula">+</button>
         </div>
       </div>
+      ${blocoRegistro()}
     </div>
   </div>
 
@@ -293,29 +613,7 @@ function renderRail() {
   </div>
 
   ${cardPerfil()}
-  ${cardEtapas()}
-
-  ${!criacaoConferida() ? `<div class="card">
-    <div class="card-h"><h2>Ficha importada</h2></div>
-    <div class="card-b">
-      <p class="note" style="margin:0 0 10px">Veio de ${esc(S.importada.origem || 'outro lugar')}. As regras de criação (pontos de Atributos, Habilidades, Disciplinas, Vantagens) não são conferidas: a ficha pode já ter experiência gasta e o Tipo de Predador embutido, e os avisos seriam falsos.</p>
-      <button type="button" class="btn sm" data-act="regras-criacao">Conferir com as regras de criação</button>
-    </div>
-  </div>` : `<div class="card">
-    <div class="card-h"><h2>Base de criação</h2>${S.importada ? '<button type="button" class="btn sm ghost" data-act="regras-criacao" style="margin-left:auto">Parar de conferir</button>' : ''}</div>
-    <div class="card-b">
-      <div class="budget">
-        ${linhaD('Atributos', o.atr)}
-        ${linhaD('Habilidades', o.hab)}
-        ${linha('Disciplinas', o.disc.atual, o.disc.alvo)}
-        ${linha('Vantagens', o.vant.atual, o.vant.alvo)}
-        ${linha('Defeitos', o.def.atual, o.def.alvo)}
-      </div>
-      ${o.disc.foraDoCla.length ? `<p class="err" style="margin:8px 0 0">Fora do clã na criação: ${esc(o.disc.foraDoCla.join(', '))}</p>` : ''}
-      ${o.disc.avisos.length ? `<p class="err" style="margin:6px 0 0">${esc(o.disc.avisos.join(' · '))}</p>` : ''}
-      <p class="note" style="margin:9px 0 0">Esta conta é a ficha no dia do Abraço: tudo que veio da experiência e do Tipo de Predador está descontado. Uma ficha de NPC antigo passa aqui igual à de um recém-criado.</p>
-    </div>
-  </div>`}`);
+  ${cardEtapas()}`);
 }
 
 /* As etapas do último sorteio, na ordem em que correram. Cada uma é
@@ -382,7 +680,7 @@ function cardConceito() {
   const pred = PREDADORES[S.meta.predador];
   return `
   <div class="card">
-    <div class="card-h"><span class="step">1</span><h2>Conceito &amp; origem</h2></div>
+    <div class="card-h"><h2>Conceito &amp; origem</h2></div>
     <div class="card-b">
       <div class="fields c3">
         <div><label class="lbl" for="f-nome">Nome</label><input class="f" id="f-nome" data-bind="meta.nome" value="${esc(S.meta.nome)}"></div>
@@ -448,8 +746,8 @@ function cardConceito() {
 function cardAtributos() {
   return `
   <div class="card">
-    <div class="card-h"><span class="step">2</span><h2>Atributos</h2><span class="hint">um 4 · três 3 · quatro 2 · um 1</span></div>
-    <div class="card-b">${statusDistrib(orcamento().atr)}<div class="fields c3">
+    <div class="card-h"><h2>Atributos</h2><span class="hint">um em 4, três em 3, quatro em 2 e um em 1</span></div>
+    <div class="card-b">${statusDistrib(orcamento().atr, 'atr')}<div class="fields c3">
       ${ATRIBUTOS.map(g => `<div>
         <div class="lbl" style="color:var(--blood-ink);border-bottom:1px solid var(--line-2);padding-bottom:3px;margin-bottom:6px">${esc(g.cat)}</div>
         ${g.itens.map(([k, pt, en]) => `<div class="trait has">
@@ -463,16 +761,14 @@ function cardAtributos() {
 
 function cardHabilidades() {
   const dist = DISTRIB_HABILIDADES[S.distribHab];
-  const resumo = Object.entries(dist.mapa).sort((a, b) => b[0] - a[0]).map(([n, q]) => `${q}× ${n}`).join(' · ');
   return `
   <div class="card">
-    <div class="card-h"><span class="step">3</span><h2>Habilidades</h2>
+    <div class="card-h"><h2>Habilidades</h2>
       <select class="f" data-sel="distribHab" style="width:auto;flex:none" aria-label="Distribuição de habilidades">
         ${Object.entries(DISTRIB_HABILIDADES).map(([k, v]) => `<option value="${k}"${k === S.distribHab ? ' selected' : ''}>${esc(v.nome)}</option>`).join('')}
       </select>
-      <span class="hint">${esc(resumo)}</span>
     </div>
-    <div class="card-b">${statusDistrib(orcamento().hab)}<div class="fields c3">
+    <div class="card-b">${statusDistrib(orcamento().hab, 'hab')}<div class="fields c3">
       ${HABILIDADES.map(g => `<div>
         <div class="lbl" style="color:var(--blood-ink);border-bottom:1px solid var(--line-2);padding-bottom:3px;margin-bottom:6px">${esc(g.cat)}</div>
         ${g.itens.map(([k, pt, en]) => {
@@ -512,7 +808,7 @@ function cardEspecializacoes() {
   if (!todas.includes(espHabEscolhida)) espHabEscolhida = todas[0] || '';
   return `
   <div class="card">
-    <div class="card-h"><span class="step">3b</span><h2>Especializações</h2>
+    <div class="card-h"><h2>Especializações</h2>
       <span class="hint">${linhas.length ? linhas.length + ' na ficha' : 'nenhuma ainda'}</span></div>
     <div class="card-b">
       ${linhas.length ? `<ul class="esp-lista">${linhas.map(l => `<li>
@@ -544,6 +840,43 @@ function blocoEspecializacoes() {
   return `<div class="sh-block sh-esp-b"><h3>Especializações</h3><ul class="sh-esp">${itens.join('')}</ul></div>`;
 }
 
+/* poderes: as listas recolhidas lembram se estavam abertas entre um redesenho e outro */
+const PW_ABERTOS = new Set();
+document.addEventListener('toggle', ev => {
+  const d = ev.target;
+  if (!d.dataset || !d.dataset.pwAbrir) return;
+  if (d.open) PW_ABERTOS.add(d.dataset.pwAbrir); else PW_ABERTOS.delete(d.dataset.pwAbrir);
+}, true);
+const chaveNotaPoder = (disc, poder) => (disc + '__' + poder).replace(/[.\s]+/g, '_');
+const custaTesteFome = p => /Teste[s]? de Fome/i.test(p.c || '');
+/* o cartão de um poder: o que faz, quanto custa, que dados rola, quanto dura e as anotações do jogador */
+function cartaoPoder(d, p, o) {
+  o = o || {};
+  const a = amalgamaDe(p);
+  const temAm = !a || (S.disc.find(x => x.nome === a.disc) || {}).nivel >= a.nivel;
+  const k = chaveNotaPoder(d.nome, p.pt);
+  const nota = (S.notasPoder || {})[k] || '';
+  const mec = [
+    ['Custo', p.c], ['Parada', p.pool], ['Resistência', p.vs], ['Duração', p.dur]
+  ].filter(x => x[1]);
+  const dl = mec.length ? `<dl class="pw-mec">${mec.map(([r, v]) => `<div><dt>${r}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : '';
+  const marcas = [p.am ? `<span class="tag ${temAm ? '' : 'blood'}">Amálgama: ${esc(p.am)}</span>` : '',
+    p.ex ? `<span class="tag">exige ${esc(p.ex)}</span>` : '', p.f && p.f !== 'Básico' ? `<span class="tag">${esc(p.f)}</span>` : ''].join('');
+  const botaoFome = custaTesteFome(p) && !o.impressao
+    ? `<button type="button" class="btn sm no-print" data-act="teste-fome" data-poder="${esc(p.pt)}" data-nivel="${p.lv || 0}">Teste de Fome</button>` : '';
+  return `<article class="pw-card">
+    <header><span class="pw-lv" aria-label="nível ${p.lv}">${p.lv || '•'}</span><h4>${esc(p.pt)}</h4>${p.en ? `<span class="pw-en">${esc(p.en)}</span>` : ''}
+      ${o.editar ? `<button type="button" class="x" data-act="rm-pw" data-i="${o.idx}" data-nome="${esc(p.pt)}" aria-label="Tirar ${esc(p.pt)}">✕</button>` : ''}</header>
+    ${p.ds ? `<p class="pw-ds">${esc(p.ds)}</p>` : ''}
+    ${dl}
+    ${marcas ? `<div class="pw-tags">${marcas}</div>` : ''}
+    ${o.editar
+      ? `<label class="pw-nota"><span class="lbl">Suas anotações</span><textarea class="f" data-bind="notasPoder.${k}" rows="2" placeholder="Texto completo do livro, como você usa, efeitos de sistema…">${esc(nota)}</textarea></label>`
+      : (nota ? `<p class="pw-nota-t">${esc(nota)}</p>` : '')}
+    ${botaoFome ? `<div class="pw-acoes">${botaoFome}</div>` : ''}
+  </article>`;
+}
+
 function cardDisciplinas() {
   const doCla = discDoCla();
   const usadas = S.disc.map(d => d.nome);
@@ -552,7 +885,7 @@ function cardDisciplinas() {
   const amp = amplitudeDisciplinas(S.meta.geracao);
   return `
   <div class="card">
-    <div class="card-h"><span class="step">4</span><h2>Disciplinas</h2>
+    <div class="card-h"><h2>Disciplinas</h2>
       <span class="hint">criação: dois pontos numa e um noutra, dentro do clã &middot; ${amp.teto} no total pela ${esc(S.meta.geracao || 13)}ª</span></div>
     <div class="card-b">${statusDisciplinas()}
       ${S.disc.length ? S.disc.map((d, idx) => {
@@ -572,24 +905,34 @@ function cardDisciplinas() {
             <button class="x" data-act="rm-disc" data-i="${idx}" aria-label="Remover ${esc(d.nome)}" style="margin-left:auto">✕</button>
           </div>
           <div class="disc-b">
-            ${info.poderes.map(p => {
-              const on = escolhidos.includes(p.pt);
-              const bloq = p.lv > d.nivel;
-              const a = amalgamaDe(p);
-              const temAm = !a || (S.disc.find(x => x.nome === a.disc) || {}).nivel >= a.nivel;
-              const mec = [p.c && 'Custo: ' + p.c, p.pool && 'Parada: ' + p.pool,
-                           p.vs && 'vs ' + p.vs, p.dur && 'Duração: ' + p.dur].filter(Boolean).join(' · ');
-              return `<div class="pw${bloq ? ' locked' : ''}"><label>
-                <input type="checkbox" data-pw="${idx}" data-nome="${esc(p.pt)}"${on ? ' checked' : ''}${bloq ? ' disabled' : ''}>
-                <span class="lv">•${p.lv}</span>
-                <span><strong>${esc(p.pt)}</strong> <span class="d">${esc(p.en)} — ${esc(p.ds)}</span>
-                  ${p.am ? `<span class="tag ${temAm ? '' : 'blood'}">Amálgama: ${esc(p.am)}</span>` : ''}
-                  ${p.ex ? `<span class="tag">exige ${esc(p.ex)}</span>` : ''}
-                  ${p.errata ? '<span class="tag">errata</span>' : ''}
-                  ${p.f !== 'Básico' ? `<span class="tag">${esc(p.f)}</span>` : ''}
-                  ${mec ? `<span class="mec">${esc(mec)}</span>` : ''}</span>
-              </label></div>`;
-            }).join('')}
+            ${(() => {
+              const meus = escolhidos.map(nome => info.poderes.find(p => p.pt === nome) || { pt: nome, lv: '', ds: '', f: 'Básico' });
+              const livres = info.poderes.filter(p => !escolhidos.includes(p.pt) && p.lv <= d.nivel);
+              const acima = info.poderes.filter(p => !escolhidos.includes(p.pt) && p.lv > d.nivel);
+              const linhaPw = (p, bloq) => {
+                const a = amalgamaDe(p);
+                const temAm = !a || (S.disc.find(x => x.nome === a.disc) || {}).nivel >= a.nivel;
+                return `<div class="pw${bloq ? ' locked' : ''}"><label>
+                  <input type="checkbox" data-pw="${idx}" data-nome="${esc(p.pt)}"${bloq ? ' disabled' : ''}>
+                  <span class="lv">${p.lv}</span>
+                  <span><strong>${esc(p.pt)}</strong> <span class="d">${esc(p.ds)}</span>
+                    ${p.am ? `<span class="tag ${temAm ? '' : 'blood'}">Amálgama: ${esc(p.am)}</span>` : ''}
+                    ${p.ex ? `<span class="tag">exige ${esc(p.ex)}</span>` : ''}
+                    ${p.f !== 'Básico' ? `<span class="tag">${esc(p.f)}</span>` : ''}</span>
+                </label></div>`;
+              };
+              const falta = d.nivel - escolhidos.length;
+              const chave = d.nome;
+              return `${meus.length ? `<div class="pw-cards">${meus.map(p => cartaoPoder(d, p, { editar: true, idx })).join('')}</div>` : ''}
+                ${livres.length ? `<details class="pw-escolher" data-pw-abrir="${esc(chave)}:livres"${falta > 0 || PW_ABERTOS.has(chave + ':livres') ? ' open' : ''}>
+                  <summary>${falta > 0 ? `Escolha ${falta === 1 ? 'mais um poder' : `mais ${falta} poderes`}` : 'Trocar ou somar poderes'} <span class="note">${livres.length} disponíve${livres.length > 1 ? 'is' : 'l'} até o nível ${d.nivel}</span></summary>
+                  ${livres.map(p => linhaPw(p, false)).join('')}
+                </details>` : ''}
+                ${acima.length ? `<details class="pw-escolher" data-pw-abrir="${esc(chave)}:acima"${PW_ABERTOS.has(chave + ':acima') ? ' open' : ''}>
+                  <summary>Poderes de nível mais alto <span class="note">${acima.length}, abrem quando ${esc(d.nome)} subir</span></summary>
+                  ${acima.map(p => linhaPw(p, true)).join('')}
+                </details>` : ''}`;
+            })()}
             ${(() => {
               const cat = CATALOGO_RITUAL[d.nome];
               if (!cat) return '';
@@ -654,7 +997,7 @@ function cardVantagens() {
 
   return `
   <div class="card">
-    <div class="card-h"><span class="step">5</span><h2>Vantagens</h2><span class="hint">7 pontos</span></div>
+    <div class="card-h"><h2>Vantagens</h2><span class="hint">7 pontos</span></div>
     <div class="card-b">${ehCacador() ? '' : (o => statusPontos(o.vant.atual, o.vant.alvo, 'Vantagens'))(orcamento())}
       ${linhas(S.vant, 'vant')}
       <div class="adder">
@@ -667,7 +1010,7 @@ function cardVantagens() {
   </div>
 
   <div class="card">
-    <div class="card-h"><span class="step">6</span><h2>Defeitos</h2><span class="hint">2 pontos obrigatórios</span></div>
+    <div class="card-h"><h2>Defeitos</h2><span class="hint">2 pontos obrigatórios</span></div>
     <div class="card-b">${ehCacador() ? '' : (o => statusPontos(o.def.atual, o.def.alvo, 'Defeitos'))(orcamento())}
       ${linhas(S.def, 'def')}
       <div class="adder">
@@ -683,7 +1026,7 @@ function cardVantagens() {
 function cardMoralidade() {
   return `
   <div class="card">
-    <div class="card-h"><span class="step">7</span><h2>Convicções &amp; Pilares</h2><span class="hint">de uma a três</span></div>
+    <div class="card-h"><h2>Convicções &amp; Pilares</h2><span class="hint">de uma a três</span></div>
     <div class="card-b">
       <div style="margin-bottom:12px">
         <label class="lbl" for="f-ten">Princípios da crônica (tenets)</label>
@@ -704,13 +1047,14 @@ function cardMoralidade() {
       <div class="fields c3" style="margin-bottom:12px">
         <div><label class="lbl" for="f-xpt">XP total</label><input class="f box" id="f-xpt" type="number" min="0" data-bind="xpTotal" value="${esc(S.xpTotal)}"></div>
         <div><label class="lbl" for="f-xpg">XP gasto</label><input class="f box" id="f-xpg" type="number" min="0" data-bind="xpGasto" value="${esc(S.xpGasto)}"></div>
-        <div><label class="lbl">Disponível</label><div style="font-family:Oswald;font-size:20px;padding-top:2px">${(Number(S.xpTotal) || 0) - (Number(S.xpGasto) || 0)}</div></div>
+        <div><label class="lbl">Disponível</label><div style="font-family:var(--f-disp);font-weight:700;font-size:24px;padding-top:2px">${(Number(S.xpTotal) || 0) - (Number(S.xpGasto) || 0)}</div></div>
       </div>
       ${(S.xpCompras && S.xpCompras.length) ? `<div style="margin-bottom:12px;padding:10px;background:var(--panel-2);border-radius:var(--r);border-left:3px solid var(--blood)">
         <span class="lbl">Comprado com experiência</span>
         ${S.xpCompras.map(c => `<div class="bline"><span class="t">${esc(c.rot)}${c.em ? ` <small style="text-transform:none;letter-spacing:0;color:var(--ink-3)">${esc(new Date(c.em).toLocaleDateString('pt-BR'))}</small>` : ''}</span><span class="v">${c.custo} xp</span></div>`).join('')}
         <p class="note" style="margin:6px 0 0">Esses pontos já estão somados nos traços acima e ficam fora da conta de criação.</p>
       </div>` : ''}
+      ${blocoXP(false)}
       <div class="adder" style="margin:0 0 12px;border-top:0;padding-top:0">
         <button type="button" class="btn primary" data-acao="xp">Gastar experiência</button>
         <span class="note">A tabela de custos e a compra passo a passo: escolha o que subir e o app calcula e desconta.</span>
@@ -1055,23 +1399,28 @@ function renderFicha() {
   </div>
 
   <div class="sh-page">
-    <h2 class="sh-eyebrow">Disciplinas &amp; recursos</h2>
-    <div class="sh-cols c2u">
-      <div class="sh-block">
-        ${S.disc.length ? S.disc.map(d => `<div class="sh-disc">
-          ${shLinha('<strong>' + esc(d.nome) + '</strong>', pips(d.nivel, 5))}
-          ${(d.poderes || []).map(nome => {
-            const p = ((DISCIPLINAS[d.nome] || { poderes: [] }).poderes.find(x => x.pt === nome)) || null;
-            const mec = p ? [p.c, p.pool && p.pool + (p.vs ? ' vs ' + p.vs : ''), p.dur].filter(Boolean).join(' · ') : '';
-            return `<div class="sh-sub">— ${esc(nome)}${mec ? `<br><span class="sh-mec">${esc(mec)}</span>` : ''}</div>`;
-          }).join('')}
-          ${d.rituais ? `<div class="sh-sub">— ${esc(d.rituais).replace(/\n/g, ' · ')}</div>` : ''}
-        </div>`).join('') : '<p class="sh-p">—</p>'}
-      </div>
+    <h2 class="sh-eyebrow">Disciplinas</h2>
+    <div class="sh-discs">
+      ${S.disc.length ? S.disc.map(d => {
+        const info = DISCIPLINAS[d.nome] || { poderes: [] };
+        const poderes = (d.poderes || []).map(nome => info.poderes.find(x => x.pt === nome) || { pt: nome, lv: '', ds: '' })
+          .sort((a, b) => (a.lv || 0) - (b.lv || 0));
+        return `<section class="sh-disc">
+          <header class="sh-disc-h"><h3>${esc(d.nome)}</h3>${pips(d.nivel, 5)}</header>
+          ${poderes.length ? `<div class="pw-cards">${poderes.map(p => cartaoPoder(d, p)).join('')}</div>` : '<p class="sh-p note">Nenhum poder escolhido.</p>'}
+          ${d.rituais ? `<p class="sh-p sh-rit"><strong>${esc((CATALOGO_RITUAL[d.nome] || {}).plural || 'Rituais')}</strong><br>${esc(d.rituais).replace(/\n/g, '<br>')}</p>` : ''}
+        </section>`;
+      }).join('') : '<p class="sh-p">—</p>'}
+    </div>
+
+    <h2 class="sh-eyebrow">Vantagens &amp; defeitos</h2>
+    <div class="sh-cols c2">
       <div class="sh-block">
         <h3>Vantagens</h3>
         ${S.vant.length ? S.vant.map(v => shLinha(esc(v.nome), pips(Number(v.pontos) || 0, 5), v.nota ? `(${esc(v.nota)})` : '')).join('') : '<p class="sh-p">—</p>'}
-        <h3 style="margin-top:11px">Defeitos</h3>
+      </div>
+      <div class="sh-block">
+        <h3>Defeitos</h3>
         ${S.def.length ? S.def.map(v => shLinha(esc(v.nome), pips(Number(v.pontos) || 0, 5), v.nota ? `(${esc(v.nota)})` : '')).join('') : '<p class="sh-p">—</p>'}
       </div>
     </div>
@@ -2018,9 +2367,59 @@ document.addEventListener('click', (ev) => {
   }
 
   const act = t.dataset.act;
+  if (act === 'dano-qtd') {
+    const n = t.dataset.trilha;
+    MESA.qtd[n] = Math.max(1, Math.min(10, (MESA.qtd[n] || 1) + Number(t.dataset.d)));
+    return render();
+  }
+  if (act === 'dano') {
+    const n = t.dataset.trilha, tipo = t.dataset.tipo, d = Number(t.dataset.d), o = S[n];
+    let q = MESA.qtd[n] || 1;
+    const rot = n === 'saude' ? 'Vitalidade' : 'Força de Vontade', nomeTipo = tipo === 'sup' ? 'superficial' : 'agravado';
+    if (d > 0) {
+      let txt = '';
+      if (tipo === 'sup' && n === 'saude' && !ehCacador() && S.danoMetade !== false) { const m = Math.ceil(q / 2); if (m !== q) txt = ` (metade de ${q})`; q = m; }
+      const f = aplicarDano(n, tipo, q);
+      registrarMesa(`${rot}: +${q} ${nomeTipo}${txt}${f < q ? ' — trilha cheia' : ''}`);
+    } else {
+      const antes = o[tipo]; o[tipo] = Math.max(0, o[tipo] - q);
+      if (antes !== o[tipo]) registrarMesa(`${rot}: curou ${antes - o[tipo]} ${nomeTipo}`);
+    }
+    MESA.qtd[n] = 1;
+    return render();
+  }
+  if (act === 'dano-metade') { S.danoMetade = t.checked; return render(); }
+  if (act === 'teste-fome') {
+    const pw = t.dataset.poder, r = testeDeFome({ poder: pw, nivel: Number(t.dataset.nivel) || 0 });
+    render(); avisoTeste(r, pw); return;
+  }
+  if (act === 'remendar') {
+    if (!S.saude.sup) { if (typeof uiAviso === 'function') uiAviso('Não há dano superficial para remendar. Dano agravado só sai com tempo e sangue (veja o livro, Remendar dano agravado).'); return; }
+    const r = testeDeFome({ motivo: 'Remendar' });
+    if (!r) return;
+    const cura = Math.min(S.saude.sup, tabelaBP().recuperado || 1);
+    S.saude.sup -= cura;
+    registrarMesa(`Remendou ${cura} superficial com sangue`);
+    render(); avisoTeste(r, `Remendou ${cura} de dano superficial`); return;
+  }
+  if (act === 'limpar-registro') { S.registroMesa = []; return render(); }
+  if (act === 'xp-implicito') {
+    const x = orcamentoXP();
+    if (!x.faltaXP) return;
+    S.xpGasto = (Number(S.xpGasto) || 0) + x.faltaXP;
+    if ((Number(S.xpTotal) || 0) < S.xpGasto) S.xpTotal = S.xpGasto;
+    render();
+    if (typeof uiAviso === 'function') uiAviso(`${x.faltaXP} XP contados como gastos. Disponível agora: ${(Number(S.xpTotal) || 0) - S.xpGasto}.`, { rotulo: 'Desfazer', fn: () => histDesfazer() });
+    return;
+  }
   if (act === 'regras-criacao') { S.regrasCriacao = !S.regrasCriacao; return render(); }
   if (act === 'mancha') { S.manchas = Math.max(0, Math.min(10, S.manchas + Number(t.dataset.d))); return render(); }
   if (act === 'rm')     { S[t.dataset.t].splice(Number(t.dataset.i), 1); return render(); }
+  if (act === 'rm-pw') {
+    const d = S.disc[Number(t.dataset.i)];
+    if (d) d.poderes = (d.poderes || []).filter(p => p !== t.dataset.nome);
+    return render();
+  }
   if (act === 'rm-disc'){ S.disc.splice(Number(t.dataset.i), 1); return render(); }
   if (act === 'rm-trunfo'){ S.trunfos.splice(Number(t.dataset.i), 1); return render(); }
   if (act === 'add-trunfo') {

@@ -166,7 +166,7 @@ const VANTAGENS = [
   V('Resiliência Vampírica','Vampiric Resilience',1,1,'Sofre dano como um vampiro pleno.',{cat:'Sangue-ralo', so:'ralo', par:'Fragilidade Mortal'}),
   V('Sangue Abominável','Abhorrent Blood',1,1,'Seu sangue é tão ruim que beber dele custa Força de Vontade.',{cat:'Sangue-ralo', so:'ralo'}),
   V('À Prova de Fé','Faith-Proof',1,1,'Mortal demais para a Fé Verdadeira te alcançar.',{cat:'Sangue-ralo', so:'ralo', f:'Guia do Jogador'}),
-  V('Pouco Apetite','Low Appetite',1,1,'Acordando com Fome 0 ou 1, rola dois dados na Provocação e fica o melhor.',{cat:'Sangue-ralo', so:'ralo', f:'Guia do Jogador'}),
+  V('Pouco Apetite','Low Appetite',1,1,'Acordando com Fome 0 ou 1, rola dois dados no Teste de Fome e fica o melhor.',{cat:'Sangue-ralo', so:'ralo', f:'Guia do Jogador'}),
   V('Sonhador Lúcido','Lucid Dreamer',1,1,'Uma vez por sessão, tira uma pista das memórias da noite anterior.',{cat:'Sangue-ralo', so:'ralo', f:'Guia do Jogador'}),
   V('Ares de Mortal','Mortality’s Mien',1,1,'Nada sobrenatural denuncia o que você é.',{cat:'Sangue-ralo', so:'ralo', f:'Guia do Jogador'}),
   V('Bebedor Veloz','Swift Feeder',1,1,'Sacia uma Fome num turno e ainda lambe a ferida fechada.',{cat:'Sangue-ralo', so:'ralo', f:'Guia do Jogador'}),
@@ -256,7 +256,7 @@ const DEFEITOS = [
   V('Decadência Faminta','Starving Decay',2,2,'A partir de Fome 3 o corpo apodrece: dois dados a menos em Social.',{cat:'Míticas'}),
   V('Objeto Amaldiçoado','Cursed Object',1,1,'Uma vez por sessão, um sucesso seu precisa ser rerrolado.',{cat:'Míticas', f:'In Memoriam'}),
   V('Duas Vezes Amaldiçoado','Twice Cursed',2,2,'Carrega a Perdição variante do clã além da comum.',{cat:'Míticas', f:'Guia do Jogador'}),
-  V('Rubor Resistente','Resistant Blush',1,1,'Na Provocação do Rubor da Vida, rola dois dados e fica com o pior.',{cat:'Míticas', f:'Succubus Club'}),
+  V('Rubor Resistente','Resistant Blush',1,1,'No Teste de Fome do Rubor da Vida, rola dois dados e fica com o pior.',{cat:'Míticas', f:'Succubus Club'}),
   V('Preso à Terra','Land Locked',1,1,'Não consegue deixar sua terra sem um teste de frenesi de medo.',{cat:'Míticas', f:'Succubus Club'}),
   V('Carne Cadavérica','Corpse Flesh',2,2,'Não consegue usar o Rubor da Vida.',{cat:'Míticas', f:'Succubus Club'}),
 
@@ -333,16 +333,16 @@ const DEFEITOS = [
    Todos valem um ponto e vêm do Guia do Jogador. */
 const DEFEITOS_DISCIPLINA = [
   { disc:'Animalismo',          pt:'Indomado',      en:'Untamed',            ds:'Em frenesi, falhar em Cavalgar a Onda custa duas Máculas.' },
-  { disc:'Auspícios',           pt:'Pesadelos Diurnos', en:'Daymares',       ds:'Ao acordar, faz duas Provocações em vez de uma.' },
+  { disc:'Auspícios',           pt:'Pesadelos Diurnos', en:'Daymares',       ds:'Ao acordar, faz dois Testes de Fome em vez de uma.' },
   { disc:'Feitiçaria de Sangue',pt:'Animismo Sanguinário', en:'Sanguinary Animism', ds:'Dois dados a menos em paradas Sociais e Mentais enquanto o sangue sussurra.' },
-  { disc:'Celeridade',          pt:'Colapso',       en:'Breakdown',          ds:'Falha na Provocação de Celeridade custa um ponto de dano agravado.' },
+  { disc:'Celeridade',          pt:'Colapso',       en:'Breakdown',          ds:'Falha no Teste de Fome de Celeridade custa um ponto de dano agravado.' },
   { disc:'Dominação',           pt:'Rombudo',       en:'Blunt',              ds:'Não pode gastar Força de Vontade para rerrolar teste Social.' },
   { disc:'Fortitude',           pt:'Tecido Cicatricial', en:'Scar Tissue',   ds:'Curar com o sangue deixa marcas visíveis e permanentes.' },
   { disc:'Ofuscação',           pt:'Apagado',       en:'Faded',              ds:'Um dado a menos em testes de Remorso.' },
   { disc:'Oblívio',             pt:'Monstruoso',    en:'Monstrous',          ds:'Conta a Humanidade como três níveis abaixo para efeitos de aparência.' },
-  { disc:'Potência',            pt:'Instinto Assassino', en:'Killer Instinct', ds:'Falha na Provocação de Potência dispara teste de frenesi de fúria.' },
+  { disc:'Potência',            pt:'Instinto Assassino', en:'Killer Instinct', ds:'Falha no Teste de Fome de Potência dispara teste de frenesi de fúria.' },
   { disc:'Presença',            pt:'Egomaníaco',    en:'Egomaniac',          ds:'Crítico sujo ou falha numa disputa Social dispara frenesi de fúria.' },
-  { disc:'Proteanismo',         pt:'Estase',        en:'Stasis',             ds:'Falha na Provocação de Proteanismo trava a forma até o pôr do sol seguinte.' }
+  { disc:'Proteanismo',         pt:'Estase',        en:'Stasis',             ds:'Falha no Teste de Fome de Proteanismo trava a forma até o pôr do sol seguinte.' }
 ];
 
 /* Pares que não podem sair na mesma ficha. Nenhum livro proíbe — é

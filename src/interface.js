@@ -318,14 +318,20 @@ function uiPendencias() {
   const p = {};
   if (!criacaoConferida()) return p;
   try {
-    const o = orcamento();
+    const o = orcamento(), x = orcamentoXP();
     if (!ehCacador()) p.identidade = !S.meta.cla || !S.meta.nome;
     else p.identidade = !S.meta.nome;
-    p.atributos = !o.atr.ok;
-    p.habilidades = !o.hab.ok;
+    p.atributos = !o.atr.ok && !x.atr.viavel;
+    p.habilidades = !o.hab.ok && !x.hab.viavel;
     if (ehCacador()) p.disciplinas = !trunfosUsados().ok;
-    else p.disciplinas = !S.meta.cla || o.disc.atual !== o.disc.alvo || o.disc.avisos.length > 0 || o.disc.foraDoCla.length > 0;
-    p.vantagens = o.vant.atual !== o.vant.alvo || o.def.atual !== o.def.alvo;
+    else {
+      const discXP = x.disc.julgavel && x.disc.viavel;
+      p.disciplinas = !S.meta.cla || (o.disc.atual !== o.disc.alvo && !discXP) || o.disc.avisos.length > 0 || (o.disc.foraDoCla.length > 0 && !discXP);
+      p.vantagens = o.vant.atual < o.vant.alvo || o.def.atual !== o.def.alvo;
+    }
+    if (ehCacador()) p.vantagens = o.vant.atual !== o.vant.alvo || o.def.atual !== o.def.alvo;
+    /* XP que a ficha usou mas não está no gasto: resolve-se em Notas e XP */
+    p.notas = !x.coberto;
   } catch (e) {}
   return p;
 }
@@ -346,9 +352,12 @@ function uiSecoes() {
   if (uiAbas()) {
     const pend = uiPendencias();
     nav.setAttribute('role', 'tablist'); nav.setAttribute('aria-label', 'Seções da ficha');
-    nav.innerHTML = lista.map(([k, t]) => {
+    const conferir = criacaoConferida();
+    nav.innerHTML = lista.map(([k, t], i) => {
       const sel = k === atual;
-      return `<button type="button" role="tab" id="aba-${k}" data-ir-secao="${k}" aria-controls="col-main" aria-selected="${sel}" tabindex="${sel ? 0 : -1}"${sel ? ' aria-current="true"' : ''}>${esc(t)}${pend[k] ? '<span class="aba-pend" title="Falta completar"><span class="sr"> (falta completar)</span></span>' : ''}</button>`;
+      const pronta = conferir && ['identidade', 'atributos', 'habilidades', 'disciplinas', 'vantagens'].includes(k) && k in pend && !pend[k];
+      const n = k === 'resumo' ? '' : `<span class="aba-n" aria-hidden="true">${pronta ? '✓' : i + 1}</span>`;
+      return `<button type="button" role="tab" id="aba-${k}" data-ir-secao="${k}" aria-controls="col-main" aria-selected="${sel}" tabindex="${sel ? 0 : -1}"${sel ? ' aria-current="true"' : ''}${pronta ? ' data-pronta' : ''}>${n}${esc(t)}${pend[k] ? '<span class="aba-pend" title="Falta completar"><span class="sr"> (falta completar)</span></span>' : (pronta ? '<span class="sr"> (pronta)</span>' : '')}</button>`;
     }).join('');
   } else {
     nav.removeAttribute('role');
@@ -466,7 +475,7 @@ function uiObservarSecoes() {
 
 /* "Na mesa": dano, Fome e Humanidade mudam no modo Ver, sem entrar em Editar */
 function uiMesa() {
-  const cards = el('col-rail').querySelectorAll(':scope > .card');
+  const cards = el('col-rail').querySelectorAll(':scope > .card[data-mesa]');
   const d0 = el('mesa-d');
   if (d0) UI.mesaAberta = d0.open;
   if (!cards.length) { el('mesa').innerHTML = ''; return; }
@@ -479,7 +488,7 @@ function uiMesa() {
                  : num('Fome', S.fome, 'var(--hunger)') + num('Hum', S.humanidade)) + num('XP', xpDisponivel());
   el('mesa').innerHTML = `<details class="mesa-d" id="mesa-d"${aberto ? ' open' : ''}>
     <summary><span class="mesa-tit">Na mesa</span>${resumo}</summary>
-    ${cards[0].outerHTML.replace('<h2>Vitais</h2>', '<h2>Na mesa</h2>')
+    ${cards[0].outerHTML.replace(' data-mesa', '').replace('<h2>Vitais</h2>', '<h2>Na mesa</h2>')
       .replace('<div class="card-b">', '<div class="card-b"><p class="mesa-nota">Marque dano e os medidores aqui mesmo, sem entrar em Editar.</p>')
       .replace(/<\/div>\s*<\/div>\s*$/, `<div class="mesa-xp"><span>Experiência: <b>${xpDisponivel()}</b> disponível</span><button type="button" class="btn sm" data-acao="xp">Gastar XP</button></div></div></div>`)}
   </details>`;
@@ -493,16 +502,22 @@ function uiValidacao() {
   if (!criacaoConferida()) { b.dataset.estado = 'neutro'; b.textContent = 'Ficha importada'; return; }
   let avisos = 0;
   try {
-    const o = orcamento();
-    if (!o.atr.ok) avisos++;
-    if (!o.hab.ok) avisos++;
+    const o = orcamento(), x = orcamentoXP();
+    /* pontos a mais que a experiência explica não são aviso; o XP fora do gasto é um só */
+    if (!o.atr.ok && !x.atr.viavel) avisos++;
+    if (!o.hab.ok && !x.hab.viavel) avisos++;
     if (ehCacador()) { if (!trunfosUsados().ok) avisos++; }
-    else { if (o.disc.atual !== o.disc.alvo) avisos++; avisos += o.disc.avisos.length + (o.disc.foraDoCla.length ? 1 : 0); }
-    if (o.vant.atual !== o.vant.alvo) avisos++;
+    else {
+      const discXP = x.disc.julgavel && x.disc.viavel;
+      if (o.disc.atual !== o.disc.alvo && !discXP) avisos++;
+      avisos += o.disc.avisos.length + (o.disc.foraDoCla.length && !discXP ? 1 : 0);
+      if (o.vant.atual < o.vant.alvo) avisos++;
+    }
     if (o.def.atual !== o.def.alvo) avisos++;
+    if (!x.coberto) avisos++;
   } catch (e) {}
   b.dataset.estado = avisos ? 'aviso' : 'ok';
-  b.textContent = avisos ? `Base de criação: ${avisos} aviso${avisos > 1 ? 's' : ''}` : 'Base de criação: tudo certo';
+  b.textContent = avisos ? `Criação: ${avisos} pendência${avisos > 1 ? 's' : ''}` : 'Criação: tudo certo';
 }
 el('validacao').onclick = () => {
   if (uiAbas() && uiEstreito()) uiIrSecao('resumo', { focarConteudo: false });

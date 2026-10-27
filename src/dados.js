@@ -72,7 +72,7 @@ const CLAS = {
     comp:'Perfeccionismo — −2 até conseguir um sucesso total ou crítico; a penalidade diminui a cada tentativa.',
     linha:'Os Feiticeiros. A pirâmide ruiu, o sangue continua.' },
   'Ventrue': { disc:['Dominação','Fortitude','Presença'],
-    bane:'Gosto Refinado — só se alimenta de um tipo específico de presa; qualquer outro sangue exige Provocação e pode ser vomitado.',
+    bane:'Gosto Refinado — só se alimenta de um tipo específico de presa; qualquer outro sangue exige Teste de Fome e pode ser vomitado.',
     comp:'Arrogância — precisa liderar e ser obedecido na situação atual. −2 até conseguir.',
     linha:'Os Reis. Nasceram para mandar e nunca esqueceram.' },
   'Hecata': { disc:['Auspícios','Fortitude','Oblívio'],
