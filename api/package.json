@@ -1,0 +1,25 @@
+{
+  "name": "ficha-de-sangue-api",
+  "version": "1.0.0",
+  "description": "API da Ficha de Sangue: contas, fichas, versões, crônicas e links de leitura",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/servidor.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/servidor.js",
+    "migrar": "node src/migrar.js",
+    "test": "node --test --test-concurrency=1 testes/*.test.js",
+    "redefinir-senha": "node src/redefinir-senha.js",
+    "usuarios": "node src/usuarios.js"
+  },
+  "dependencies": {
+    "@fastify/compress": "^8.3.1",
+    "@fastify/cors": "^11.3.0",
+    "@fastify/rate-limit": "^10.3.0",
+    "fastify": "^5.12.5",
+    "pg": "^8.23.1"
+  }
+}

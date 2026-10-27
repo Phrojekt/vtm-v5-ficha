@@ -1,0 +1,913 @@
+<title>Ficha de Sangue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+:root{
+  --ground:#e9e7ea; --panel:#f7f6f8; --panel-2:#dfdce4; --sunk:#d6d2dc;
+  --ink:#191520; --ink-2:#4b4455; --ink-3:#5d5569;
+  --line:#c7c1d0; --line-2:#b0a9bc;
+  --blood:#8e1420; --blood-ink:#6d0f19; --blood-soft:#f0dcdd;
+  --hunger:#b3121c; --gold:#7d6115; --ok:#2c6a45; --warn:#8a5610; --bad:#96161f;
+  --shadow:0 1px 2px rgba(25,21,32,.09), 0 6px 18px -12px rgba(25,21,32,.3);
+  --r:3px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#100f16; --panel:#191722; --panel-2:#221f2d; --sunk:#0c0b11;
+    --ink:#e4dfd6; --ink-2:#b5adc0; --ink-3:#958da6;
+    --line:#312d3d; --line-2:#443e54;
+    --blood:#b8202c; --blood-ink:#e2646c; --blood-soft:#2a1419;
+    --hunger:#e03a44; --gold:#c9a227; --ok:#5bab7f; --warn:#d3a04a; --bad:#e2646c;
+    --shadow:0 1px 2px rgba(0,0,0,.5), 0 8px 24px -14px #000;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#100f16; --panel:#191722; --panel-2:#221f2d; --sunk:#0c0b11;
+  --ink:#e4dfd6; --ink-2:#b5adc0; --ink-3:#958da6;
+  --line:#312d3d; --line-2:#443e54;
+  --blood:#b8202c; --blood-ink:#e2646c; --blood-soft:#2a1419;
+  --hunger:#e03a44; --gold:#c9a227; --ok:#5bab7f; --warn:#d3a04a; --bad:#e2646c;
+  --shadow:0 1px 2px rgba(0,0,0,.5), 0 8px 24px -14px #000;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:Spectral,Georgia,"Times New Roman",serif; font-size:15px; line-height:1.5;
+  -webkit-text-size-adjust:100%;
+}
+h1,h2,h3,h4{font-family:Oswald,"Arial Narrow",sans-serif; font-weight:600; margin:0; text-wrap:balance; letter-spacing:.01em}
+button,input,select,textarea{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--blood-ink); outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* ============ casca: barra global, navegação, menus ============ */
+:root{--nav-h:58px; --tab-h:62px}
+html{scroll-padding-top:calc(var(--nav-h) + 112px)}
+.sr{position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0}
+.pular{position:absolute; left:12px; top:-60px; z-index:200; background:var(--blood); color:#fff; padding:10px 14px; border-radius:6px; font-family:"Barlow Condensed",sans-serif; font-weight:600; letter-spacing:.06em; text-decoration:none}
+.pular:focus{top:10px}
+.wrap{max-width:1240px; margin:0 auto; padding-inline:20px; padding-block:0 72px}
+
+.gnav{position:sticky; top:0; z-index:60; background:var(--panel); border-bottom:1px solid var(--line); padding-top:env(safe-area-inset-top,0px)}
+.gnav-in{max-width:1240px; margin:0 auto; height:var(--nav-h); display:flex; align-items:center; gap:22px; padding:0 20px}
+.marca{display:flex; align-items:center; gap:9px; color:var(--ink); text-decoration:none; font-family:Oswald,"Arial Narrow",sans-serif; font-weight:600; font-size:17px; letter-spacing:.12em; text-transform:uppercase; white-space:nowrap}
+.marca svg{width:12px; height:16px; flex:none}
+.navl{display:flex; gap:2px; align-self:stretch}
+.navl a{display:flex; align-items:center; gap:8px; padding:0 13px; color:var(--ink-2); text-decoration:none; font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:15px; letter-spacing:.1em; text-transform:uppercase; border-bottom:2px solid transparent; margin-bottom:-1px}
+.navl a:hover{color:var(--ink)}
+.navl a[aria-current="page"]{color:var(--ink); border-bottom-color:var(--blood)}
+.navl svg, .tabbar svg, .ico{width:18px; height:18px; flex:none}
+.gnav-sp{flex:1}
+.gnav-dir{display:flex; align-items:center; gap:8px}
+.icob{display:inline-grid; place-items:center; width:40px; height:40px; border-radius:8px; border:1px solid transparent; background:transparent; color:var(--ink-2); cursor:pointer; padding:0}
+.icob:hover{color:var(--ink); border-color:var(--line-2)}
+.icob svg{width:20px; height:20px}
+
+/* estado de sincronização: um selo pequeno, sempre no mesmo lugar */
+.nv-status{display:inline-flex; align-items:center; gap:7px; font-family:"Barlow Condensed",sans-serif; font-size:14px; letter-spacing:.05em; color:var(--ink-2); white-space:nowrap}
+.nv-status::before{content:""; width:8px; height:8px; border-radius:50%; background:var(--ink-3); flex:none}
+.nv-status:empty{display:none}
+.nv-status[data-estado="ok"]::before{background:var(--ok)}
+.nv-status[data-estado="pendente"]::before{background:var(--warn)}
+.nv-status[data-estado="sync"]::before{background:var(--gold)}
+.nv-status[data-estado="offline"]{color:var(--blood-ink)}
+
+/* conta */
+.conta-wrap{position:relative}
+.conta-chip{display:inline-flex; align-items:center; gap:8px; cursor:pointer; background:var(--ground); border:1px solid var(--line-2); border-radius:999px; padding:3px 12px 3px 3px; min-height:40px; color:var(--ink); font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:15px; letter-spacing:.04em}
+.conta-chip:hover{border-color:var(--blood)}
+.ava{width:32px; height:32px; border-radius:50%; background:var(--blood); color:#fff; display:grid; place-items:center; font-family:Oswald,sans-serif; font-weight:600; font-size:14px; flex:none}
+.conta-nome{max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+/* botões */
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:38px;
+  font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:14.5px; letter-spacing:.08em; text-transform:uppercase;
+  background:var(--panel); color:var(--ink); border:1px solid var(--line-2); border-radius:6px; padding:0 13px; cursor:pointer; white-space:nowrap; text-decoration:none}
+.btn:hover{border-color:var(--blood); color:var(--blood-ink)}
+.btn.primary{background:var(--blood); border-color:var(--blood); color:#fff}
+.btn.primary:hover{background:var(--blood-ink); border-color:var(--blood-ink); color:#fff}
+:root[data-theme="dark"] .btn.primary:hover{background:#9b1a25}
+.btn.ghost{background:transparent; border-color:transparent; color:var(--ink-2)}
+.btn.ghost:hover{color:var(--blood-ink); border-color:var(--line-2)}
+.btn.danger:hover{color:var(--bad); border-color:var(--bad)}
+.btn[hidden]{display:none}
+.btn.sm{min-height:32px; padding:0 9px; font-size:13px}
+.btn.lg{min-height:46px; padding:0 18px; font-size:15.5px}
+.btn svg{width:17px; height:17px; flex:none}
+.btn[aria-pressed="true"]{background:var(--blood); border-color:var(--blood); color:#fff}
+.btn[aria-expanded="true"]{border-color:var(--blood)}
+.seg{display:inline-flex}
+.seg .seg-b{border-radius:0}
+.seg .seg-b + .seg-b{margin-left:-1px}
+.seg .seg-b:first-child{border-radius:6px 0 0 6px}
+.seg .seg-b:last-child{border-radius:0 6px 6px 0}
+.seg-b[aria-pressed="false"]{color:var(--ink-2)}
+a.btn{text-decoration:none}
+
+/* menus suspensos (botão + lista) */
+.menu-w{position:relative; display:inline-flex}
+.menu{position:absolute; top:calc(100% + 6px); right:0; z-index:80; min-width:250px; max-width:min(340px, calc(100vw - 24px)); background:var(--panel); border:1px solid var(--line-2); border-radius:10px; box-shadow:0 18px 40px -16px rgba(0,0,0,.55), var(--shadow); padding:6px; display:flex; flex-direction:column}
+.menu[hidden]{display:none}
+.menu.esq{right:auto; left:0}
+.menu-h{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:12.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-3); padding:9px 10px 3px}
+.menu-h:first-child{padding-top:4px}
+.menu-cab{padding:8px 10px 10px; border-bottom:1px solid var(--line); margin-bottom:4px; display:flex; flex-direction:column; gap:1px}
+.menu-cab strong{font-family:Oswald,sans-serif; font-weight:600; font-size:15px}
+.menu-cab span{font-size:13px; color:var(--ink-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.mi{display:flex; gap:11px; align-items:flex-start; width:100%; text-align:left; background:transparent; border:0; border-radius:6px; padding:9px 10px; color:var(--ink); cursor:pointer; text-decoration:none; font-family:Spectral,Georgia,serif}
+.mi:hover, .mi:focus-visible{background:var(--blood-soft); outline:none}
+.mi:focus-visible{box-shadow:inset 0 0 0 2px var(--blood-ink)}
+.mi svg{width:19px; height:19px; flex:none; margin-top:1px; color:var(--blood-ink)}
+.mi b{display:block; font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:15.5px; letter-spacing:.05em; text-transform:uppercase; line-height:1.25}
+.mi small{display:block; font-size:13px; color:var(--ink-2); line-height:1.35}
+.mi.perigo b, .mi.perigo svg{color:var(--bad)}
+.mi[hidden]{display:none}
+.menu hr{border:0; border-top:1px solid var(--line); margin:5px 4px}
+
+/* diálogos */
+dialog.dlg{border:1px solid var(--line-2); border-radius:12px; background:var(--panel); color:var(--ink); padding:0; width:min(640px, calc(100vw - 24px)); max-height:calc(100dvh - 32px); box-shadow:0 24px 60px -20px #000}
+dialog.dlg::backdrop{background:rgba(8,6,12,.62)}
+.dlg-h{display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--panel); z-index:1}
+.dlg-h h2{font-size:18px; letter-spacing:.06em; text-transform:uppercase; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.dlg-b{padding:16px 18px 18px}
+.dlg-p{display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; padding:12px 18px; border-top:1px solid var(--line)}
+.opcoes{display:grid; gap:8px}
+.opcao{display:flex; gap:12px; align-items:flex-start; padding:12px 14px; border:1px solid var(--line-2); border-radius:8px; cursor:pointer; background:var(--ground)}
+.opcao:has(input:checked){border-color:var(--blood); background:var(--blood-soft)}
+.opcao input{accent-color:var(--blood); margin-top:4px; width:18px; height:18px; flex:none}
+.opcao b{display:block; font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:16px; letter-spacing:.06em; text-transform:uppercase}
+.opcao small{display:block; font-size:13.5px; color:var(--ink-2)}
+fieldset.grupo{border:0; padding:0; margin:0 0 16px}
+fieldset.grupo legend{padding:0; margin-bottom:8px}
+.opcoes.lado{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:520px){ .opcoes.lado{grid-template-columns:1fr} }
+
+/* avisos (toast) */
+.avisos{position:fixed; left:50%; transform:translateX(-50%); bottom:calc(20px + env(safe-area-inset-bottom,0px)); z-index:120; width:min(560px, calc(100vw - 24px)); display:flex; flex-direction:column; gap:8px; pointer-events:none}
+.aviso{pointer-events:auto; display:flex; gap:10px; align-items:flex-start; background:var(--ink); color:var(--panel); border-radius:10px; padding:11px 12px 11px 15px; box-shadow:0 14px 34px -14px #000; font-size:14.5px; line-height:1.45}
+.aviso p{margin:0; flex:1}
+.aviso button{background:transparent; border:0; color:inherit; opacity:.75; cursor:pointer; font-size:18px; line-height:1; padding:2px 4px}
+.aviso button:hover{opacity:1}
+
+/* barra de abas no celular */
+.tabbar{display:none}
+@media (max-width:760px){
+  :root{--nav-h:54px}
+  .navl, .gnav .conta-nome{display:none}
+  .gnav-in{gap:10px; padding:0 12px}
+  .marca{font-size:15px; letter-spacing:.1em}
+  .gnav .nv-status{font-size:13px}
+  .tabbar{display:flex; position:fixed; left:0; right:0; bottom:0; z-index:70; background:var(--panel); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom,0px)}
+  .tabbar a{flex:1; min-height:var(--tab-h); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:var(--ink-3); text-decoration:none; font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:12.5px; letter-spacing:.08em; text-transform:uppercase}
+  .tabbar a svg{width:22px; height:22px}
+  .tabbar a[aria-current="page"]{color:var(--blood-ink)}
+  body{padding-bottom:calc(var(--tab-h) + env(safe-area-inset-bottom,0px))}
+  .avisos{bottom:calc(var(--tab-h) + 12px + env(safe-area-inset-bottom,0px))}
+  .wrap{padding-inline:14px}
+  html{scroll-padding-top:calc(var(--nav-h) + 96px)}
+}
+.view[hidden]{display:none!important}
+/* grade */
+.grid{display:grid; grid-template-columns:minmax(0,1fr) 288px; gap:22px; align-items:start; margin-top:20px}
+@media (max-width:920px){ .grid{grid-template-columns:1fr} .rail{position:static!important; order:-1} }
+
+.card{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow)}
+.card + .card{margin-top:16px}
+.card-h{display:flex; align-items:center; gap:10px; padding:11px 14px; border-bottom:1px solid var(--line); flex-wrap:wrap}
+.card-h h2{font-size:15px; text-transform:uppercase; letter-spacing:.11em}
+.card-h .hint{font-family:"Barlow Condensed"; font-size:13px; letter-spacing:.04em; color:var(--ink-3); margin-left:auto}
+.card-b{padding:14px}
+.step{font-family:"Barlow Condensed"; font-weight:700; font-size:12px; letter-spacing:.06em; color:var(--blood-ink);
+      border:1px solid var(--blood); border-radius:2px; width:21px; height:21px; display:grid; place-items:center; flex:none}
+.card.forja{border-color:var(--blood)}
+.card.forja .card-h{background:var(--blood-soft)}
+
+.rail{position:sticky; top:calc(var(--nav-h) + 62px + env(safe-area-inset-top,0px))}
+.rail .card-b{padding:12px}
+
+/* rotulos e campos */
+.lbl{font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); display:block; margin-bottom:3px}
+.f{width:100%; background:transparent; border:0; border-bottom:1px solid var(--line-2); padding:4px 2px; border-radius:0}
+.f:focus{border-bottom-color:var(--blood); outline:none}
+select.f, textarea.f, input.box{
+  background:var(--ground); border:1px solid var(--line-2); border-radius:var(--r); padding:5px 7px;
+}
+select.f{appearance:none; background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),linear-gradient(135deg,var(--ink-3) 50%,transparent 50%); background-position:calc(100% - 14px) 52%,calc(100% - 9px) 52%; background-size:5px 5px,5px 5px; background-repeat:no-repeat; padding-right:26px}
+textarea.f{resize:vertical; min-height:58px; line-height:1.45}
+.fields{display:grid; gap:12px 14px}
+.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:720px){ .c2,.c3{grid-template-columns:1fr} }
+
+/* pontos */
+.dots{display:inline-flex; gap:3px; align-items:center}
+.dot{
+  width:14px; height:14px; padding:0; border-radius:50%; cursor:pointer;
+  border:1.5px solid var(--line-2); background:transparent; display:block;
+}
+.dot:hover{border-color:var(--blood)}
+.dot.on{background:var(--ink); border-color:var(--ink)}
+.dot.temp{background:var(--blood); border-color:var(--blood)}
+
+.trait{display:flex; align-items:center; gap:10px; padding:3px 0; border-bottom:1px dotted var(--line); flex-wrap:wrap}
+.trait .nm{flex:1; min-width:110px; font-size:14.5px}
+.trait .nm small{color:var(--ink-3); font-size:11.5px; font-family:"Barlow Condensed"; letter-spacing:.06em; text-transform:uppercase; display:block; line-height:1.2}
+.trait .val{font-family:"Barlow Condensed"; font-weight:700; font-size:14px; color:var(--ink-3); width:14px; text-align:right; font-variant-numeric:tabular-nums}
+.trait.has .nm{font-weight:600}
+.trait .spec{flex-basis:100%; font-size:12.5px; font-style:italic; color:var(--blood-ink)}
+
+/* caixas de dano */
+.track{display:flex; gap:3px; flex-wrap:wrap}
+.bx{
+  width:20px; height:20px; border:1.5px solid var(--line-2); background:var(--ground); cursor:pointer;
+  border-radius:1px; padding:0; font-family:Oswald; font-size:13px; font-weight:600; line-height:1; color:var(--ink);
+}
+.bx:hover{border-color:var(--blood)}
+.bx.sup{color:var(--warn); border-color:var(--warn)}
+.bx.agg{color:var(--bad); border-color:var(--bad); background:var(--blood-soft)}
+.bx.hum{background:var(--ink); border-color:var(--ink)}
+.bx.stain{background:repeating-linear-gradient(45deg,var(--blood) 0 3px,transparent 3px 6px); border-color:var(--blood)}
+
+.vital{padding:9px 0; border-bottom:1px solid var(--line)}
+.vital:last-child{border-bottom:0}
+.vital-h{display:flex; align-items:baseline; gap:8px; margin-bottom:5px}
+.vital-h .lbl{margin:0}
+.vital-h .n{margin-left:auto; font-family:Oswald; font-weight:600; font-size:17px; font-variant-numeric:tabular-nums}
+.vital-h .n small{font-size:11px; color:var(--ink-3); font-family:"Barlow Condensed"; letter-spacing:.08em}
+
+/* orcamento */
+.budget{display:grid; gap:5px}
+.bline{display:flex; align-items:center; gap:8px; font-family:"Barlow Condensed"; font-size:13.5px; letter-spacing:.03em}
+.bline .t{flex:1; color:var(--ink-2); text-transform:uppercase; letter-spacing:.09em; font-weight:600}
+.bline .v{font-variant-numeric:tabular-nums; font-weight:700; font-size:13px}
+.v.ok{color:var(--ok)} .v.over{color:var(--bad)} .v.under{color:var(--warn)}
+.pip{width:7px; height:7px; border-radius:50%; background:var(--line-2); flex:none}
+.pip.ok{background:var(--ok)} .pip.over{background:var(--bad)} .pip.under{background:var(--warn)}
+
+/* listas editaveis */
+.row{display:flex; gap:8px; align-items:flex-start; padding:7px 0; border-bottom:1px dotted var(--line); flex-wrap:wrap}
+.row:last-of-type{border-bottom:0}
+.row .grow{flex:1; min-width:140px}
+.x{background:none; border:0; color:var(--ink-3); cursor:pointer; font-size:16px; line-height:1; padding:2px 5px; border-radius:2px; flex:none}
+.x:hover{color:var(--bad); background:var(--blood-soft)}
+.adder{display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin-top:10px; padding-top:10px; border-top:1px solid var(--line)}
+.adder select,.adder input{flex:1; min-width:120px}
+
+.tag{display:inline-block; font-family:"Barlow Condensed"; font-size:11.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; padding:1px 6px; border:1px solid var(--line-2); border-radius:2px; color:var(--ink-3)}
+.tag.blood{border-color:var(--blood); color:var(--blood-ink)}
+.note{font-size:13px; color:var(--ink-2); font-style:italic; line-height:1.5}
+.err{color:var(--bad); font-family:"Barlow Condensed"; font-size:13px; letter-spacing:.04em}
+
+/* poderes */
+.disc{border:1px solid var(--line); border-radius:var(--r); margin-bottom:10px; background:var(--panel-2)}
+.disc-h{display:flex; align-items:center; gap:10px; padding:8px 10px; flex-wrap:wrap}
+.disc-h .dn{font-family:Oswald; font-weight:600; font-size:15px; letter-spacing:.06em; text-transform:uppercase}
+.disc-b{padding:0 10px 10px}
+.pw{padding:4px 0; font-size:13.5px}
+.pw label{display:flex; gap:7px; cursor:pointer; align-items:flex-start}
+.pw input{margin-top:5px; accent-color:var(--blood); flex:none}
+.pw .lv{font-family:"Barlow Condensed"; font-weight:700; color:var(--blood-ink); font-size:12px; letter-spacing:.06em; flex:none; padding-top:2px}
+.pw .d{color:var(--ink-3); font-size:12.5px; font-style:italic}
+.pw.locked{opacity:.42}
+.pw .mec{display:block; font-family:"Barlow Condensed",sans-serif; font-size:12px; letter-spacing:.03em; color:var(--ink-3); margin-top:1px}
+.pw .tag{margin-left:4px; vertical-align:1px}
+
+/* ============ ficha ============ */
+.sh-page{max-width:920px; margin:0 auto 34px}
+
+/* cabeçalho */
+.sh-mast{margin-bottom:18px}
+.sh-kicker{font-family:"Barlow Condensed"; font-weight:600; font-size:11.5px; letter-spacing:.24em; text-transform:uppercase; color:var(--blood-ink); margin-bottom:2px}
+.sheet h1{font-size:clamp(28px,5vw,40px); line-height:1.02; letter-spacing:.01em; text-transform:uppercase; margin-bottom:8px}
+.sh-rule{height:2px; background:linear-gradient(90deg,var(--blood) 0%,var(--blood) 22%,var(--line) 22%,var(--line) 100%); margin-bottom:8px}
+.sh-chips{display:flex; flex-wrap:wrap; gap:5px}
+.sh-chip{font-family:"Barlow Condensed"; font-weight:600; font-size:11.5px; letter-spacing:.11em; text-transform:uppercase; padding:2px 7px; border:1px solid var(--line-2); border-radius:2px; color:var(--ink-2)}
+.sh-chip.key{border-color:var(--blood); color:var(--blood-ink)}
+
+/* colunas */
+.sh-cols{display:grid; gap:14px 26px; margin-bottom:16px; align-items:start}
+.sh-cols.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.sh-cols.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sh-cols.c2u{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}
+@media (max-width:760px){ .sh-cols.c3,.sh-cols.c2,.sh-cols.c2u{grid-template-columns:1fr} }
+
+.sh-eyebrow{font-family:"Barlow Condensed"; font-weight:700; font-size:11.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--ink-3); margin:0 0 9px; display:flex; align-items:center; gap:11px}
+.sh-eyebrow::after{content:""; flex:1; height:1px; background:var(--line)}
+.sh-block{break-inside:avoid}
+.sh-block h3{font-family:"Barlow Condensed"; font-weight:700; font-size:11.5px; text-transform:uppercase; letter-spacing:.17em; color:var(--blood-ink); margin-bottom:5px}
+
+/* linha com condutores pontilhados */
+.sh-line{display:flex; align-items:baseline; gap:6px; font-size:13.5px; padding:2px 0}
+.sh-line .n{flex:0 1 auto; min-width:0}
+.sh-line .n i{color:var(--ink-3); font-size:11.5px; font-style:italic}
+.sh-line .lead{flex:1 1 12px; min-width:10px; border-bottom:1px dotted var(--line-2); transform:translateY(-4px)}
+.sh-line .p{flex:none; font-family:"Barlow Condensed"; font-weight:600; letter-spacing:.06em; color:var(--ink); white-space:nowrap}
+.sh-line.plain{align-items:flex-start}
+.sh-line.plain .n{flex:0 0 34%}
+.sh-line.plain .v{flex:1; text-align:right; font-size:13.5px}
+.sh-sub{font-size:12.5px; font-style:italic; color:var(--ink-2); padding:1px 0 1px 13px}
+.sh-mec{font-family:"Barlow Condensed",sans-serif; font-style:normal; font-size:11.5px; letter-spacing:.03em; color:var(--ink-3)}
+.sh-p{font-size:13.5px; margin:0 0 7px}
+.sh-p strong{font-family:"Barlow Condensed"; font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3)}
+
+/* marcadores */
+.pips{display:inline-flex; gap:2.5px; align-items:center}
+.pips i{width:9px; height:9px; border-radius:50%; border:1px solid var(--ink-3); display:block}
+.pips i.on{background:var(--ink); border-color:var(--ink)}
+.pips.blood i.on{background:var(--hunger); border-color:var(--hunger)}
+.boxes{display:inline-flex; gap:2.5px; flex-wrap:wrap}
+.boxes b{width:14px; height:14px; border:1px solid var(--ink-3); border-radius:1px; display:grid; place-items:center;
+         font-family:Oswald; font-weight:600; font-size:10px; line-height:1; color:var(--ink)}
+.boxes b.sup{border-color:var(--warn); color:var(--warn)}
+.boxes b.agg{border-color:var(--bad); color:var(--bad)}
+.boxes b.fill{background:var(--ink); border-color:var(--ink)}
+.boxes b.stain{background:repeating-linear-gradient(45deg,var(--blood) 0 2.5px,transparent 2.5px 5px); border-color:var(--blood)}
+.sh-stat{display:flex; align-items:baseline; gap:7px; margin-bottom:4px}
+.sh-stat .k{font-family:"Barlow Condensed"; font-weight:600; font-size:11.5px; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-3)}
+.sh-stat .num{font-family:Oswald; font-weight:600; font-size:15px; margin-left:auto; font-variant-numeric:tabular-nums}
+
+.sh-disc{break-inside:avoid; margin-bottom:9px}
+.sh-note{border-left:2px solid var(--blood); padding-left:10px}
+
+@media print{
+  .sh-page{max-width:none; margin:0}
+  .sh-page + .sh-page{break-before:page; padding-top:2mm}
+  .sh-cols{gap:10px 18px; margin-bottom:11px}
+  .sheet h1{font-size:25pt}
+  .sh-line{padding:1px 0; font-size:9.5pt}
+  .pips i{width:7.5px; height:7.5px}
+  .boxes b{width:12px; height:12px; font-size:9px}
+}
+
+@media print{
+  @page{size:A4 portrait; margin:11mm}
+  :root{--ground:#fff; --panel:#fff; --panel-2:#fff; --ink:#000; --ink-2:#333; --ink-3:#555; --line:#bbb; --line-2:#888; --blood:#7a0f19; --blood-ink:#7a0f19; --blood-soft:#fff; --shadow:none}
+  body{background:#fff; color:#000; font-size:10pt}
+  .gnav,.tabbar,.editor,.no-print,.avisos,.view:not(#view-ficha){display:none!important}
+  #view-ficha{display:block!important}
+  .ver-grid{display:block!important}
+  .sheet{display:block!important}
+  .wrap{padding:0; max-width:none}
+  .sh-grid{gap:10px}
+  .sh-block{break-inside:avoid}
+  .bx,.dot{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+  .dot.on{background:#000!important; border-color:#000!important}
+}
+
+/* ============ telas ============ */
+.pg-h{display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; margin:30px 0 20px}
+.pg-h .t{flex:1; min-width:240px}
+.pg-h h1{font-size:clamp(28px,4.2vw,40px); text-transform:uppercase; letter-spacing:.02em; line-height:1.05; margin-top:3px}
+.olho{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:13px; letter-spacing:.17em; text-transform:uppercase; color:var(--ink-3)}
+.olho.sangue{color:var(--blood-ink)}
+.faixa{display:flex; gap:12px; align-items:flex-start; padding:12px 14px; border:1px solid var(--line-2); border-radius:10px; background:var(--panel); margin-bottom:18px; font-size:14.5px}
+.faixa svg{width:20px; height:20px; flex:none; color:var(--blood-ink); margin-top:1px}
+.faixa p{margin:0; flex:1}
+.faixa .acoes{display:flex; gap:8px; flex-wrap:wrap}
+
+/* filtros de Minhas fichas: separados das ações (que ficam no cabeçalho) */
+.filtros{display:flex; gap:10px; flex-wrap:wrap; align-items:center; padding:12px; background:var(--panel); border:1px solid var(--line); border-radius:10px; margin-bottom:18px}
+.campo{display:flex; align-items:center; gap:8px; background:var(--ground); border:1px solid var(--line-2); border-radius:6px; padding:0 11px; min-height:40px; color:var(--ink-3)}
+.campo:focus-within{border-color:var(--blood)}
+.campo input, .campo select{background:transparent; border:0; color:var(--ink); font:inherit; font-size:15.5px; outline:none; width:100%; min-height:38px}
+.campo select{cursor:pointer}
+.campo .olho{white-space:nowrap}
+.campo.busca{flex:1 1 280px}
+.filtros .contagem{font-family:"Barlow Condensed",sans-serif; font-size:14px; letter-spacing:.05em; color:var(--ink-3); margin-left:auto}
+
+.fichas-grade{display:grid; grid-template-columns:repeat(auto-fill, minmax(270px, 1fr)); gap:16px}
+.fcard{background:var(--panel); border:1px solid var(--line); border-radius:12px; display:flex; flex-direction:column; box-shadow:var(--shadow); min-width:0}
+.fcard:hover{border-color:var(--line-2)}
+.fcard.atual{border-color:var(--blood)}
+.fcard-b{padding:16px 16px 12px; display:flex; flex-direction:column; gap:9px; flex:1}
+.fcard-id{display:flex; gap:13px; align-items:center; min-width:0}
+.mono{width:46px; height:46px; border-radius:9px; display:grid; place-items:center; font-family:Oswald,sans-serif; font-weight:600; font-size:19px; flex:none; background:var(--panel-2); color:var(--ink-2)}
+.mono.v{background:var(--blood-soft); color:var(--blood-ink)}
+.fcard h2{font-size:20px; letter-spacing:.02em; line-height:1.15; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.fcard h2 a{color:inherit; text-decoration:none}
+.fcard h2 a:hover{color:var(--blood-ink)}
+.fcard .cla{font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:14.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--blood-ink)}
+.fcard .conc{margin:0; font-style:italic; font-size:14.5px; color:var(--ink-2); line-height:1.45; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+.selos{display:flex; gap:6px; flex-wrap:wrap; margin-top:auto}
+.selo{display:inline-flex; align-items:center; gap:5px; font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:13px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-2); border:1px solid var(--line-2); border-radius:999px; padding:1px 9px}
+.selo.alerta{border-color:var(--warn); color:var(--warn)}
+.selo.ok{border-color:var(--ok); color:var(--ok)}
+.selo.sangue{border-color:var(--blood); color:var(--blood-ink)}
+.fcard-p{display:flex; gap:8px; align-items:center; padding:10px 12px; border-top:1px solid var(--line)}
+.fcard-p .btn.ver{flex:1}
+.nova-cartao{border:1.5px dashed var(--line-2); border-radius:12px; background:transparent; color:var(--ink-2); min-height:200px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer; font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:16px; letter-spacing:.1em; text-transform:uppercase; padding:16px}
+.nova-cartao:hover{border-color:var(--blood); color:var(--blood-ink)}
+.nova-cartao svg{width:28px; height:28px}
+.nova-cartao small{font:italic 14px Spectral,serif; letter-spacing:0; text-transform:none; color:var(--ink-3)}
+.vazio{text-align:center; padding:48px 16px; border:1.5px dashed var(--line-2); border-radius:12px}
+.vazio h2{font-size:22px; text-transform:uppercase; letter-spacing:.06em; margin-bottom:6px}
+.vazio p{margin:0 auto 16px; max-width:460px; color:var(--ink-2)}
+.vazio .acoes{display:flex; gap:10px; justify-content:center; flex-wrap:wrap}
+.rodape-nota{display:flex; gap:8px; align-items:center; font-size:14px; color:var(--ink-3); margin-top:20px}
+.rodape-nota svg{width:16px; height:16px; flex:none}
+
+/* ============ a ficha em página própria ============ */
+.fh{background:var(--panel); border-bottom:1px solid var(--line)}
+.fh-in{max-width:1240px; margin:0 auto; padding:14px 20px 0}
+.migalha{display:inline-flex; align-items:center; gap:6px; font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:15px; letter-spacing:.05em; color:var(--ink-2); text-decoration:none; min-height:32px}
+.migalha:hover{color:var(--blood-ink)}
+.fh-top{display:flex; gap:16px 20px; align-items:flex-end; flex-wrap:wrap; margin-top:4px}
+.fh-id{flex:1; min-width:min(100%, 300px)}
+.fh h1{font-size:clamp(28px,4.6vw,44px); line-height:1.04; letter-spacing:.01em; text-transform:uppercase; margin:2px 0 9px; overflow-wrap:anywhere}
+.fh-chips{display:flex; gap:6px; flex-wrap:wrap}
+.fh-chip{font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:13.5px; letter-spacing:.1em; text-transform:uppercase; padding:2px 8px; border:1px solid var(--line-2); border-radius:4px; color:var(--ink-2)}
+.fh-chip.key{border-color:var(--blood); color:var(--blood-ink)}
+.fh-acoes{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.fh-div{width:1px; height:26px; background:var(--line-2); flex:none}
+.faixa-modo{display:none; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px; padding:10px 12px; border-radius:8px; font-size:14.5px}
+.faixa-modo strong{font-family:"Barlow Condensed",sans-serif; font-weight:600; letter-spacing:.04em}
+body.nv-leitura .faixa-modo.leitura{display:flex; background:var(--panel-2); border:1px solid var(--line-2)}
+body.nv-remota .faixa-modo.remota{display:flex; background:var(--blood); color:#fff}
+body.nv-remota .faixa-modo.remota .btn{background:transparent; color:#fff; border-color:#ffffff88}
+.faixa-modo .sp{flex:1}
+body.nv-leitura .so-dono, body.nv-remota .so-dono{display:none!important}
+body.nv-leitura .so-edicao{display:none!important}
+
+/* seções da ficha: navegação fixa logo abaixo da barra global */
+.secnav{position:sticky; top:calc(var(--nav-h) + env(safe-area-inset-top,0px)); z-index:50; background:var(--panel); border-bottom:1px solid var(--line)}
+.secnav-in{max-width:1240px; margin:0 auto; padding:0 20px; display:flex; gap:2px; overflow-x:auto; scrollbar-width:none}
+.secnav-in::-webkit-scrollbar{display:none}
+.secnav a{display:flex; align-items:center; min-height:48px; padding:0 13px; white-space:nowrap; color:var(--ink-2); text-decoration:none; font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:15px; letter-spacing:.1em; text-transform:uppercase; border-bottom:2px solid transparent}
+.secnav a:hover{color:var(--ink)}
+.secnav a[aria-current="true"]{color:var(--ink); border-bottom-color:var(--blood)}
+
+/* ferramentas de criação: só no modo Editar, numa faixa própria */
+.criacao{display:none; background:var(--blood-soft); border-bottom:1px solid var(--line)}
+body.modo-editar .criacao{display:block}
+body.nv-leitura .criacao{display:none}
+.criacao-in{max-width:1240px; margin:0 auto; padding:9px 20px; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.criacao .olho{margin-right:4px; color:var(--blood-ink)}
+.validacao{display:inline-flex; align-items:center; gap:7px; margin-left:auto; font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:14.5px; letter-spacing:.05em; color:var(--ink-2); background:transparent; border:0; cursor:pointer; min-height:36px; padding:0 4px}
+.validacao::before{content:""; width:9px; height:9px; border-radius:50%; background:var(--ok)}
+.validacao[data-estado="aviso"]{color:var(--warn)}
+.validacao[data-estado="aviso"]::before{background:var(--warn)}
+
+/* modo Ver × Editar */
+.ver-grid{display:none; grid-template-columns:minmax(0,1fr) 300px; gap:22px; align-items:start; margin-top:22px}
+body.view-sheet .ver-grid{display:grid}
+body.view-sheet .editor{display:none}
+.sheet{display:block}
+.mesa{position:sticky; top:calc(var(--nav-h) + 62px + env(safe-area-inset-top,0px))}
+.mesa .card-b{padding:12px 14px}
+.mesa-nota{margin:0 0 4px; font-size:13.5px; font-style:italic; color:var(--ink-3)}
+@media screen{ .ver-grid .sh-mast{display:none} .ver-grid .sh-page{max-width:none} .ver-grid .sh-page + .sh-page{margin-top:6px} }
+@media (max-width:920px){ .ver-grid{grid-template-columns:minmax(0,1fr)} .mesa{position:static; order:-1} }
+#view-ficha .wrap{padding-top:0}
+[data-secao]{scroll-margin-top:calc(var(--nav-h) + 64px)}
+
+@media (max-width:760px){
+  .fh-in{padding:8px 14px 0}
+  .fh h1{font-size:28px}
+  .fh-top{gap:12px}
+  .fh-acoes{width:100%}
+  .fh-acoes .seg{flex:1}
+  .fh-acoes .seg .seg-b{flex:1; min-height:44px}
+  .fh-acoes .fh-div{display:none}
+  .fh-acoes .rot-longo{display:none}
+  .secnav-in, .criacao-in{padding-inline:14px}
+  .secnav a{padding:0 11px; font-size:14px}
+  .ver-grid{margin-top:14px}
+  .pg-h{margin:18px 0 14px}
+  .filtros{padding:10px}
+  .filtros .contagem{display:none}
+}
+
+/* ============ crônicas ============ */
+.cr-layout{display:flex; flex-wrap:wrap; gap:26px; align-items:flex-start}
+.cr-lista{flex:1 1 280px; min-width:260px; max-width:380px; display:flex; flex-direction:column; gap:10px}
+.cr-det{flex:999 1 560px; min-width:0; display:flex; flex-direction:column; gap:18px}
+.cr-item{display:block; text-align:left; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:13px 15px; color:var(--ink); text-decoration:none}
+.cr-item:hover{border-color:var(--line-2)}
+.cr-item[aria-current="page"]{border-color:var(--blood); background:var(--blood-soft)}
+.cr-item strong{display:block; font-family:Oswald,sans-serif; font-weight:600; font-size:18px; letter-spacing:.02em}
+.cr-item span{font-size:14px; color:var(--ink-2)}
+.cr-form{padding:14px; border:1px solid var(--line); border-radius:10px; display:flex; flex-direction:column; gap:8px; background:var(--panel)}
+.cr-form .linha{display:flex; gap:8px}
+.cr-form .campo{flex:1}
+.cr-cab{display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap}
+.cr-cab .t{flex:1; min-width:240px}
+.cr-cab h2{font-size:clamp(26px,3.6vw,36px); text-transform:uppercase; line-height:1.05}
+.stats{display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:10px}
+.stat{border:1px solid var(--line); border-radius:10px; padding:11px 13px; background:var(--panel)}
+.stat b{display:block; font-family:Oswald,sans-serif; font-weight:600; font-size:24px; line-height:1.1}
+.stat span{font-size:13.5px; color:var(--ink-2)}
+.stat.alerta{border-color:var(--blood)} .stat.alerta b{color:var(--blood-ink)}
+.stat.convite{grid-column:span 2}
+@media (max-width:520px){ .stat.convite{grid-column:auto} }
+.abas{display:flex; gap:2px; border-bottom:1px solid var(--line); overflow-x:auto}
+.abas [role="tab"]{min-height:46px; padding:0 15px; background:transparent; border:0; border-bottom:2px solid transparent; color:var(--ink-2); font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:15px; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; white-space:nowrap}
+.abas [role="tab"][aria-selected="true"]{color:var(--ink); border-bottom-color:var(--blood)}
+.cr-vazio{padding:36px 18px; text-align:center; border:1.5px dashed var(--line-2); border-radius:12px; color:var(--ink-2)}
+
+/* ============ conta (celular) ============ */
+.conta-tela{max-width:560px}
+.conta-cab{display:flex; gap:14px; align-items:center; padding:16px; border:1px solid var(--line); border-radius:12px; background:var(--panel); margin-bottom:14px}
+.conta-cab .ava{width:48px; height:48px; font-size:20px}
+.lista-acoes{display:flex; flex-direction:column; border:1px solid var(--line); border-radius:12px; background:var(--panel); overflow:hidden}
+.lista-acoes .mi{border-radius:0; padding:14px 16px; border-bottom:1px solid var(--line)}
+.lista-acoes .mi:last-child{border-bottom:0}
+
+/* alvos de toque maiores em tela de toque */
+@media (pointer:coarse){
+  .dot{width:24px; height:24px}
+  .dots{gap:6px}
+  .bx{width:32px; height:32px}
+  .track{gap:5px}
+  .x{min-width:36px; min-height:36px}
+  .btn.sm{min-height:38px}
+}
+.nv-msg{margin:0 0 10px; padding:7px 10px; background:var(--blood-soft); border-left:3px solid var(--blood); font-size:13.5px}
+.nv-item{display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:10px; align-items:center; padding:7px 4px; border-bottom:1px dotted var(--line)}
+.nv-item.atual{background:var(--blood-soft); border-left:3px solid var(--blood); padding-left:8px}
+.nv-abrir{all:unset; cursor:pointer; display:flex; flex-direction:column; min-width:0}
+.nv-abrir strong{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.nv-abrir:focus-visible{outline:2px solid var(--blood); outline-offset:2px}
+.nv-sub{display:block; font-size:12.5px; color:var(--ink-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.nv-meta{display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end}
+.nv-quando{font-size:12px; color:var(--ink-3)}
+.nv-acoes{display:flex; gap:4px}
+@media (max-width:760px){.nv-item{grid-template-columns:1fr} .nv-meta,.nv-acoes{justify-content:flex-start}}
+.nv-h3{font-size:12.5px; text-transform:uppercase; letter-spacing:.12em; margin:16px 0 4px; color:var(--ink-2)}
+.nv-codigo{font-size:16px; letter-spacing:.12em; padding:2px 8px; border:1px dashed var(--blood); border-radius:3px}
+.nv-link{font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60%}
+/* histórico de alterações */
+.muds{display:flex; flex-wrap:wrap; gap:4px; margin-top:5px}
+.mud{font-size:12px; line-height:1.3; padding:2px 7px; border-radius:999px; border:1px solid var(--line-2); background:var(--panel); color:var(--ink-2); white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis}
+.mud-atributos,.mud-habilidades{border-color:#4a6fd866; color:var(--ink)}
+.mud-disciplinas{border-color:var(--blood); color:var(--blood-ink)}
+.mud-vitais{border-color:var(--warn); color:var(--ink)}
+.mud-xp{border-color:var(--gold); color:var(--ink)}
+.mud-criada,.mud-rest{background:var(--blood-soft); border-color:var(--blood); color:var(--blood-ink); font-weight:600}
+.mud-mais{border-style:dashed; color:var(--ink-3)}
+.nv-v-mud{flex-basis:100%}
+.nv-hist{position:fixed; inset:0; z-index:90; background:#000a; display:flex; align-items:flex-start; justify-content:center; padding:24px 16px; overflow:auto}
+.nv-hist-caixa{width:100%; max-width:720px; background:var(--panel); border:1px solid var(--line-2); border-radius:10px; box-shadow:var(--shadow); display:flex; flex-direction:column; max-height:calc(100dvh - 48px)}
+.nv-hist-h{display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line)}
+.nv-hist-h h2{margin:0; font-family:Oswald; font-weight:600; font-size:17px; letter-spacing:.04em; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.nv-hist-h .btn{margin-left:auto}
+.nv-hist-b{overflow:auto; padding:6px 16px}
+.nv-hv{padding:10px 0; border-bottom:1px dotted var(--line)}
+.nv-hv-h{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.nv-hv-a{margin-left:auto; display:flex; gap:6px; align-items:center}
+.nv-hist-p{margin:0; padding:10px 16px; border-top:1px solid var(--line)}
+body.nv-hist-aberto{overflow:hidden}
+/* painel do narrador */
+.np{margin-top:6px}
+.np-h{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:6px 0 10px}
+.np-stats{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-bottom:6px}
+.np-stat{border:1px solid var(--line); border-radius:8px; padding:9px 11px; background:var(--ground)}
+.np-stat b{display:block; font-family:Oswald; font-weight:600; font-size:22px; line-height:1.1}
+.np-stat span{font-size:12px; color:var(--ink-3)}
+.np-stat.alerta{border-color:var(--blood)} .np-stat.alerta b{color:var(--blood-ink)}
+.np-t{font-family:"Barlow Condensed"; font-weight:700; font-size:12.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3); margin:16px 0 4px}
+.np-jog{display:flex; align-items:center; gap:9px; flex-wrap:wrap; padding:7px 0; border-bottom:1px dotted var(--line)}
+.np-dot{width:9px; height:9px; border-radius:50%; background:var(--line-2); flex:none}
+.np-dot.on{background:var(--ok); box-shadow:0 0 0 3px #5bab7f33}
+.np-ficha{display:grid; grid-template-columns:minmax(0,1.6fr) auto minmax(0,1.3fr) auto; gap:6px 14px; align-items:center; padding:9px 0; border-bottom:1px dotted var(--line)}
+.np-f-nome{min-width:0} .np-f-nome .nv-sub{display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.np-nums{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+.np-num{display:flex; flex-direction:column; align-items:center; line-height:1.1}
+.np-num span{font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); font-family:"Barlow Condensed"; font-weight:700}
+.np-num b{font-family:Oswald; font-weight:600; font-size:16px}
+.np-dano{font-size:12px; color:var(--bad)}
+.np-f-st{display:flex; gap:6px; align-items:center; flex-wrap:wrap; min-width:0}
+.np-ok{border-color:var(--ok); color:var(--ok)}
+.np-pend-l{grid-column:1 / -1; font-size:12.5px; color:var(--ink-2); margin-top:-2px}
+.np-f-a{display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap}
+.np-at{padding:8px 0; border-bottom:1px dotted var(--line)}
+.np-at-h{display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+@media (max-width:720px){
+  .np-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .np-ficha{grid-template-columns:1fr; gap:6px}
+  .np-f-a{justify-content:flex-start}
+  .nv-hist{padding:0} .nv-hist-caixa{max-height:100dvh; border-radius:0; min-height:100dvh}
+}
+
+/* ajustes: foco programático em títulos, linha de clã, "na mesa" recolhível no celular */
+[tabindex="-1"]:focus{outline:none}
+[tabindex="-1"]:focus-visible{outline:none}
+.fcard .cla{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:.08em}
+.fcard .quando{font-size:13px; font-style:italic; color:var(--ink-3); align-self:center}
+@media screen{ .ver-grid .sh-estado{display:none} .ver-grid .sh-ident{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media screen and (max-width:760px){ .ver-grid .sh-ident{grid-template-columns:1fr} }
+.mesa-d > summary{display:none}
+@media (max-width:920px){
+  .mesa-d{background:var(--panel); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow)}
+  .mesa-d > summary{display:flex; align-items:center; gap:10px; list-style:none; cursor:pointer; padding:10px 14px; min-height:52px}
+  .mesa-d > summary::-webkit-details-marker{display:none}
+  .mesa-d > summary::after{content:""; width:9px; height:9px; border-right:2px solid var(--ink-3); border-bottom:2px solid var(--ink-3); transform:rotate(45deg); margin-left:auto; flex:none}
+  .mesa-d[open] > summary::after{transform:rotate(-135deg)}
+  .mesa-d[open] > summary{border-bottom:1px solid var(--line)}
+  .mesa-d .card{border:0; box-shadow:none; background:transparent}
+  .mesa-d .card > .card-h{display:none}
+  .mesa-num{display:flex; flex-direction:column; align-items:center; line-height:1.1; min-width:44px}
+  .mesa-num span{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3)}
+  .mesa-num b{font-family:Oswald,sans-serif; font-weight:600; font-size:18px}
+  .mesa-tit{font-family:Oswald,sans-serif; font-weight:600; font-size:14px; letter-spacing:.11em; text-transform:uppercase; margin-right:4px}
+}
+@media (max-width:760px){
+  .fh-acoes{flex-wrap:nowrap}
+  .fh-acoes .btn{padding:0 11px}
+  .fh-acoes .menu-w .btn{min-height:44px}
+}
+
+/* ficha alheia só para leitura: sem controles de mesa (nada ali seria salvo) */
+body.nv-leitura .mesa{display:none}
+body.nv-leitura .ver-grid{grid-template-columns:minmax(0,1fr)}
+@media screen{ body.nv-leitura .ver-grid .sh-estado{display:block} body.nv-leitura .ver-grid .sh-ident{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media screen and (max-width:760px){ body.nv-leitura .ver-grid .sh-ident{grid-template-columns:1fr} }
+/* crônicas no celular: lista OU detalhe, com "Todas as crônicas" para voltar */
+.cr-voltar{display:none}
+@media (max-width:760px){
+  .gnav .conta-topo{display:none}
+  .cr-layout.tem-sel .cr-lista{display:none}
+  .cr-layout.tem-sel .cr-voltar{display:inline-flex}
+  .cr-layout:not(.tem-sel) .cr-placeholder{display:none}
+  .cr-lista{max-width:none}
+}
+
+input.spec{background:transparent; border:0; border-bottom:1px dotted var(--line-2); padding:2px 0; min-width:0; width:100%; font-family:inherit}
+input.spec:focus{outline:none; border-bottom:1px solid var(--blood)}
+input.spec::placeholder{color:var(--ink-3)}
+
+@media (max-width:480px){
+  .gnav .nv-status{font-size:0; gap:0}
+  .gnav .nv-status::before{width:10px; height:10px}
+  .marca{min-width:0; overflow:hidden}
+  .marca span{overflow:hidden; text-overflow:ellipsis}
+}
+
+@media (max-width:760px){ .gnav .rot-longo{display:none} #btn-instalar{min-height:40px} }
+
+/* o narrador editando a ficha de um jogador: nada de sortear ou trocar o sistema por cima */
+body.nv-remota #btn-sortear, body.nv-remota #btn-forja, body.nv-remota #btn-desfazer, body.nv-remota .criacao .seg{display:none!important}
+
+/* ---- experiência ---- */
+dialog.dlg-largo{width:min(760px, calc(100vw - 24px))}
+.xp-saldo{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-bottom:12px}
+.xp-saldo > div{border:1px solid var(--line); border-radius:8px; padding:8px 12px; background:var(--ground)}
+.xp-saldo b{display:block; font-family:Oswald,sans-serif; font-weight:600; font-size:24px; line-height:1.1}
+.xp-saldo .disp{border-color:var(--blood)} .xp-saldo .disp b{color:var(--blood-ink)}
+.xp-ganhar .linha{display:flex; gap:8px}
+.xp-ganhar input{max-width:140px}
+fieldset.xp-comprar{border:1px solid var(--line); border-radius:10px; padding:12px 14px 14px; margin:16px 0 0}
+fieldset.xp-comprar legend{padding:0 6px}
+.xp-cats{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:6px; margin-bottom:12px}
+.xp-cat{display:flex; gap:8px; align-items:flex-start; padding:8px 10px; border:1px solid var(--line-2); border-radius:8px; cursor:pointer; background:var(--ground)}
+.xp-cat:has(input:checked){border-color:var(--blood); background:var(--blood-soft)}
+.xp-cat input{accent-color:var(--blood); margin-top:3px; flex:none}
+.xp-cat b{display:block; font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:15px; letter-spacing:.05em; text-transform:uppercase; line-height:1.2}
+.xp-cat small{display:block; font-size:12.5px; color:var(--ink-2); line-height:1.3}
+.xp-escolha{grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr))}
+.xp-fim{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:12px}
+.xp-msg{margin:0; flex:1; min-width:180px; font-size:14.5px; color:var(--ink-2)}
+.xp-msg.ruim{color:var(--bad)}
+.btn:disabled{opacity:.5; cursor:not-allowed}
+.xp-hist{list-style:none; margin:0 0 8px; padding:0}
+.xp-hist li{display:flex; gap:10px; align-items:baseline; padding:6px 0; border-bottom:1px dotted var(--line); font-size:14.5px}
+.xp-hist li span{flex:1; min-width:0}
+.xp-hist small{color:var(--ink-3); font-size:12.5px; white-space:nowrap}
+.xp-hist b{font-family:"Barlow Condensed",sans-serif; font-weight:700; white-space:nowrap}
+.xp-ref{margin-top:16px}
+.xp-ref summary{cursor:pointer; padding:4px 0}
+.xp-tab{width:100%; border-collapse:collapse; margin-top:6px; font-size:14.5px}
+.xp-tab th, .xp-tab td{padding:6px 8px; border-bottom:1px solid var(--line); text-align:left}
+.xp-tab thead th{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3)}
+.xp-tab tbody th{font-weight:600}
+.xp-tab td{font-family:"Barlow Condensed",sans-serif; font-weight:600; letter-spacing:.04em; white-space:nowrap}
+.mesa-xp{display:flex; align-items:center; gap:10px; padding-top:10px; margin-top:4px; border-top:1px solid var(--line); flex-wrap:wrap}
+.mesa-xp span{flex:1; font-size:14px; color:var(--ink-2)}
+.mesa-xp b{font-family:Oswald,sans-serif; font-size:18px; color:var(--ink)}
+@media (max-width:520px){ .xp-saldo b{font-size:20px} .xp-cats{grid-template-columns:1fr 1fr} }
+/* ---- especializações ---- */
+.esp-lista{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(min(250px,100%),1fr)); gap:6px 18px}
+.esp-lista li{display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px dotted var(--line); min-width:0}
+.esp-h{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:13px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); flex:none; min-width:92px}
+.esp-t{flex:1; min-width:0; font-style:italic; color:var(--blood-ink)}
+.trait span.spec{flex-basis:100%; font-size:12.5px; font-style:italic; color:var(--blood-ink)}
+.sh-esp-b{margin:-6px 0 16px}
+.sh-esp{list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:4px 18px; font-size:13.5px}
+.sh-esp b{font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); margin-right:4px}
+
+.sh-line .n, .sh-line.plain .v{overflow-wrap:anywhere}
+@media (max-width:520px){ .sh-line .p{white-space:normal; text-align:right} }
+
+@media (max-width:420px){ .mesa-d > summary{gap:4px; padding:8px 10px} .mesa-num{min-width:0; flex:1} .mesa-tit{position:absolute!important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)} }
+.mesa-d > summary{min-width:0}
+</style>
+
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+
+<header class="gnav no-print">
+  <div class="gnav-in">
+    <a class="marca" href="#/fichas" aria-label="Ficha de Sangue — início"><svg viewBox="0 0 12 16" aria-hidden="true"><path d="M6 0C6 0 0 7 0 10.5A6 6 0 0 0 12 10.5C12 7 6 0 6 0Z" fill="var(--blood)"/></svg><span>Ficha de Sangue</span></a>
+    <nav class="navl" aria-label="Principal">
+      <a href="#/fichas" data-nav="fichas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Fichas</a>
+      <a href="#/cronicas" data-nav="cronicas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.6"/><path d="M3 20c.6-3.6 3-5.6 6-5.6s5.4 2 6 5.6M15 14.6c2.8 0 5 1.8 5.6 5.4"/></svg>Crônicas</a>
+      <a href="mapa/" data-nav="mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4Z"/><path d="M9 4v13.5M15 6.5V20"/></svg>Mapa</a>
+    </nav>
+    <span class="gnav-sp"></span>
+    <div class="gnav-dir">
+      <span class="nv-status" id="nv-status" role="status" aria-live="polite"></span>
+      <button type="button" class="btn sm" id="btn-instalar" data-nv="instalar" aria-label="Instalar app" hidden title="Instalar a Ficha de Sangue como app neste aparelho"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M12 7v7M9 11l3 3 3-3"/></svg><span class="rot-longo">Instalar app</span></button>
+      <button type="button" class="icob" id="btn-tema" aria-label="Alternar tema claro ou escuro" title="Tema claro ou escuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg></button>
+      <div id="conta-topo" class="conta-topo"></div>
+    </div>
+  </div>
+</header>
+
+<main id="conteudo" tabindex="-1">
+
+  <!-- MINHAS FICHAS -->
+  <section class="view" id="view-fichas" aria-labelledby="t-fichas" hidden>
+    <div class="wrap" id="tela-fichas"></div>
+  </section>
+
+  <!-- CRÔNICAS -->
+  <section class="view" id="view-cronicas" aria-labelledby="t-cronicas" hidden>
+    <div class="wrap" id="tela-cronicas"></div>
+  </section>
+
+  <!-- CONTA (celular) -->
+  <section class="view" id="view-conta" aria-labelledby="t-conta" hidden>
+    <div class="wrap" id="tela-conta"></div>
+  </section>
+
+  <!-- A FICHA, EM PÁGINA PRÓPRIA -->
+  <section class="view" id="view-ficha" aria-labelledby="fh-nome" hidden>
+    <div class="fh no-print">
+      <div class="fh-in">
+        <a class="migalha" href="#/fichas" id="fh-voltar"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg><span id="fh-voltar-t">Minhas fichas</span></a>
+        <div class="fh-top">
+          <div class="fh-id">
+            <div class="olho sangue" id="fh-sistema">Vampiro: A Máscara · 5ª edição</div>
+            <h1 id="fh-nome">Sem nome</h1>
+            <div class="fh-chips" id="fh-chips"></div>
+          </div>
+          <div class="fh-acoes" role="toolbar" aria-label="Ações da ficha">
+            <div class="seg so-edicao" role="group" aria-label="Modo da ficha">
+              <button type="button" class="btn seg-b" id="modo-ver" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>Ver</button>
+              <button type="button" class="btn seg-b" id="modo-editar" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Editar</button>
+            </div>
+            <span class="fh-div so-edicao" aria-hidden="true"></span>
+            <div class="menu-w">
+              <button type="button" class="btn" id="btn-exportar" aria-label="Exportar" aria-haspopup="menu" aria-expanded="false" aria-controls="menu-exportar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></svg><span class="rot-longo">Exportar</span></button>
+              <div class="menu" id="menu-exportar" role="menu" aria-label="Exportar" hidden>
+                <div class="menu-h" aria-hidden="true">Baixar</div>
+                <button type="button" class="mi" role="menuitem" data-acao="pdf" id="mi-pdf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 14h6M9 18h4"/></svg><span><b>PDF editável</b><small>Modelo oficial, com campos preenchíveis</small></span></button>
+                <button type="button" class="mi" role="menuitem" data-acao="baixar-json"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 4H6a2 2 0 0 0-2 2v4l-2 2 2 2v4a2 2 0 0 0 2 2h2M16 4h2a2 2 0 0 1 2 2v4l2 2-2 2v4a2 2 0 0 1-2 2h-2"/></svg><span><b>Arquivo .json</b><small>Cópia de segurança, abre em qualquer aparelho</small></span></button>
+                <button type="button" class="mi" role="menuitem" data-acao="texto-json"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span><b>Copiar como texto</b><small>Para colar em outro aparelho ou mensagem</small></span></button>
+                <div class="menu-h" aria-hidden="true">Imprimir</div>
+                <button type="button" class="mi" role="menuitem" data-acao="imprimir" id="mi-imprimir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M7 14h10v7H7z"/></svg><span><b id="mi-imprimir-t">No modelo oficial</b><small id="mi-imprimir-s">Duas páginas A4</small></span></button>
+                <button type="button" class="mi" role="menuitem" data-acao="imprimir-pagina" id="mi-imprimir-pagina"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 4h16v16H4zM4 9h16M9 9v11"/></svg><span><b>O layout desta página</b><small>Como aparece em Ver</small></span></button>
+              </div>
+            </div>
+            <div class="menu-w so-dono">
+              <button type="button" class="btn" id="btn-ficha-mais" aria-label="Mais ações da ficha" aria-haspopup="menu" aria-expanded="false" aria-controls="menu-ficha"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg><span class="rot-longo">Ficha</span></button>
+              <div class="menu" id="menu-ficha" role="menu" aria-label="Mais ações da ficha" hidden>
+                <button type="button" class="mi" role="menuitem" data-acao="xp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v18M7 8l5-5 5 5"/><path d="M5 21h14"/></svg><span><b>Gastar experiência</b><small>Tabela de custos e compra passo a passo</small></span></button>
+                <button type="button" class="mi" role="menuitem" data-acao="compartilhar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg><span><b>Crônica e compartilhar</b><small>Pôr numa crônica, link de leitura, entregar</small></span></button>
+                <button type="button" class="mi" role="menuitem" data-acao="historico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg><span><b>Histórico de versões</b><small>Ver, comparar e voltar atrás</small></span></button>
+                <hr>
+                <button type="button" class="mi" role="menuitem" data-acao="duplicar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><span><b>Duplicar</b></span></button>
+                <button type="button" class="mi perigo" role="menuitem" data-acao="excluir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg><span><b>Excluir ficha</b></span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="faixa-modo leitura" role="note"><strong id="nv-leitura-titulo"></strong><span class="sp"></span>
+          <button type="button" class="btn sm" data-nv="leitura-copia" title="Guarda uma cópia editável nas suas fichas">Guardar uma cópia</button>
+          <button type="button" class="btn sm" data-nv="leitura-sair">Fechar</button></div>
+        <div class="faixa-modo remota" role="note"><strong id="nv-remota-titulo"></strong><span id="nv-remota-status" role="status"></span><span class="sp"></span>
+          <button type="button" class="btn sm" data-nv="h-remota">Histórico</button>
+          <button type="button" class="btn sm" data-nv="remota-sair">← Voltar à crônica</button></div>
+        <div style="height:10px"></div>
+      </div>
+    </div>
+    <nav class="secnav no-print" aria-label="Seções da ficha"><div class="secnav-in" id="secnav"></div></nav>
+    <div class="criacao no-print" role="region" aria-label="Ferramentas de criação">
+      <div class="criacao-in" role="toolbar" aria-label="Ferramentas de criação">
+        <span class="olho" aria-hidden="true">Criação</span>
+        <div class="seg" role="group" aria-label="Sistema">
+          <button type="button" class="btn seg-b sm" id="sis-vampiro" aria-pressed="true">Vampiro</button>
+          <button type="button" class="btn seg-b sm" id="sis-cacador" aria-pressed="false">Caçador</button>
+        </div>
+        <button type="button" class="btn sm" id="btn-sortear" title="Sorteia a ficha inteira de novo com os parâmetros da Forja">Sortear de novo</button>
+        <button type="button" class="btn sm" id="btn-forja" aria-pressed="false" aria-controls="col-main">Forja</button>
+        <button type="button" class="btn sm ghost" id="btn-desfazer" hidden title="Volta para a ficha de antes do sorteio">Desfazer sorteio</button>
+        <button type="button" class="validacao" id="validacao" data-estado="ok">Base de criação</button>
+      </div>
+    </div>
+    <div class="wrap">
+      <div class="editor">
+        <div class="grid">
+          <div id="col-main"></div>
+          <div class="rail" id="col-rail" role="complementary" aria-label="Vitais e validação"></div>
+        </div>
+      </div>
+      <div class="ver-grid">
+        <div class="sheet" id="sheet"></div>
+        <aside class="mesa no-print" id="mesa" aria-label="Na mesa"></aside>
+      </div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar no-print" aria-label="Principal">
+  <a href="#/fichas" data-nav="fichas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Fichas</a>
+  <a href="#/cronicas" data-nav="cronicas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.6"/><path d="M3 20c.6-3.6 3-5.6 6-5.6s5.4 2 6 5.6M15 14.6c2.8 0 5 1.8 5.6 5.4"/></svg>Crônicas</a>
+  <a href="mapa/" data-nav="mapa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5L9 4Z"/><path d="M9 4v13.5M15 6.5V20"/></svg>Mapa</a>
+  <a href="#/conta" data-nav="conta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.8-3.8 3.6-6 7-6s6.2 2.2 7 6"/></svg>Conta</a>
+</nav>
+
+<div class="avisos no-print" id="avisos" role="status" aria-live="polite"></div>
+<input type="file" id="arquivo-importar" accept=".json,application/json,.pdf,application/pdf" hidden>
+
+<dialog class="dlg" id="dlg-nova" aria-labelledby="dlg-nova-t">
+  <form method="dialog" id="form-nova">
+    <div class="dlg-h"><h2 id="dlg-nova-t">Nova ficha</h2><button type="submit" value="cancelar" class="icob" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="dlg-b">
+      <fieldset class="grupo"><legend class="olho">Sistema</legend>
+        <div class="opcoes lado">
+          <label class="opcao"><input type="radio" name="sistema" value="vampiro" checked><span><b>Vampiro</b><small>A Máscara, 5ª edição</small></span></label>
+          <label class="opcao"><input type="radio" name="sistema" value="cacador"><span><b>Caçador</b><small>A Revanche, 5ª edição</small></span></label>
+        </div>
+      </fieldset>
+      <fieldset class="grupo" style="margin:0"><legend class="olho">Como começar</legend>
+        <div class="opcoes">
+          <label class="opcao"><input type="radio" name="inicio" value="sorteada" checked><span><b>Sorteada</b><small>O dado monta uma ficha completa e válida; você ajusta depois</small></span></label>
+          <label class="opcao"><input type="radio" name="inicio" value="forja"><span><b>Pela Forja</b><small>Escreva o contexto e fixe clã, idade, predador… antes de sortear</small></span></label>
+          <label class="opcao"><input type="radio" name="inicio" value="branco"><span><b>Em branco</b><small>Preencha tudo à mão</small></span></label>
+        </div>
+      </fieldset>
+    </div>
+    <div class="dlg-p"><button type="submit" value="cancelar" class="btn ghost">Cancelar</button><button type="submit" value="criar" class="btn primary">Criar ficha</button></div>
+  </form>
+</dialog>
+
+<dialog class="dlg" id="dlg-ficha" aria-labelledby="dlg-ficha-t">
+  <div class="dlg-h"><h2 id="dlg-ficha-t">Crônica e compartilhar</h2><button type="button" class="icob" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="dlg-b" id="dlg-ficha-b"></div>
+</dialog>
+
+<dialog class="dlg" id="dlg-json" aria-labelledby="dlg-json-t">
+  <div class="dlg-h"><h2 id="dlg-json-t">Ficha como texto</h2><button type="button" class="icob" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="dlg-b">
+    <p class="note" style="margin:0 0 9px">Copie para levar a ficha a outro aparelho. Para trazer uma ficha de texto, use <strong>Importar</strong> em Minhas fichas.</p>
+    <label class="sr" for="json-area">Ficha em JSON</label>
+    <textarea class="f" id="json-area" readonly style="min-height:240px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px" spellcheck="false"></textarea>
+  </div>
+  <div class="dlg-p"><span class="note" id="json-msg" role="status" style="margin-right:auto"></span><button type="button" class="btn" data-acao="copiar-json">Copiar</button><button type="button" class="btn primary" data-fechar>Pronto</button></div>
+</dialog>
+
+<dialog class="dlg" id="dlg-importar" aria-labelledby="dlg-importar-t">
+  <div class="dlg-h"><h2 id="dlg-importar-t">Importar ficha</h2><button type="button" class="icob" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="dlg-b">
+    <p class="note" style="margin:0 0 12px">A ficha importada entra como ficha nova — nada que você já tem é sobrescrito.</p>
+    <button type="button" class="btn lg primary" data-acao="escolher-arquivo" style="width:100%">Escolher arquivo (.pdf ou .json)</button>
+    <p class="olho" style="margin:18px 0 6px">Ou cole o texto da ficha</p>
+    <label class="sr" for="importar-texto">Texto da ficha (JSON)</label>
+    <textarea class="f" id="importar-texto" style="min-height:120px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px" spellcheck="false" placeholder='{"sistema":"vampiro", …}'></textarea>
+    <p class="err" id="importar-msg" role="alert" style="margin:6px 0 0"></p>
+  </div>
+  <div class="dlg-p"><button type="button" class="btn ghost" data-fechar>Cancelar</button><button type="button" class="btn" data-acao="importar-texto">Importar texto</button></div>
+</dialog>
+
+<dialog class="dlg dlg-largo" id="dlg-xp" aria-labelledby="dlg-xp-t">
+  <div class="dlg-h"><h2 id="dlg-xp-t">Experiência</h2><button type="button" class="icob" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="dlg-b" id="dlg-xp-b"></div>
+</dialog>
+
+<dialog class="dlg" id="dlg-senha" aria-labelledby="dlg-senha-t">
+  <form id="form-senha">
+    <div class="dlg-h"><h2 id="dlg-senha-t">Trocar senha</h2><button type="button" class="icob" data-fechar aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="dlg-b fields">
+      <div><label class="lbl" for="nv-senha-atual">Senha atual</label><input class="f" id="nv-senha-atual" type="password" autocomplete="current-password" required></div>
+      <div><label class="lbl" for="nv-senha-nova">Nova senha <span style="text-transform:none;letter-spacing:0">(mínimo 8 caracteres)</span></label><input class="f" id="nv-senha-nova" type="password" autocomplete="new-password" minlength="8" required></div>
+      <p class="err" id="senha-msg" role="alert" style="margin:0"></p>
+    </div>
+    <div class="dlg-p"><button type="button" class="btn ghost" data-fechar>Cancelar</button><button type="submit" class="btn primary">Trocar senha</button></div>
+  </form>
+</dialog>
+
+<script src="disciplinas.js"></script>
+<script src="vantagens.js"></script>
+<script src="loresheets.js"></script>
+<script src="dados.js"></script>
+<script src="dados-extra.js"></script>
+<script src="contexto.js"></script>
+<script src="cacador.js"></script>
+<script src="pdf-ficha.js"></script>
+<script src="nuvem.js"></script>
+<script src="app.js"></script>
+<script src="experiencia.js"></script>
+<script src="interface.js"></script>

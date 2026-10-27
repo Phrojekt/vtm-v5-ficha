@@ -1,0 +1,40 @@
+# segredos e acesso à VPS — nunca no repositório
+.vps-ponte/
+CONECTAR-VPS.cmd
+.env
+api/.env
+*.pem
+id_*
+
+# dependências e pacotes gerados
+node_modules/
+api-vps.tar.gz
+*.tar.gz
+
+# Vercel (liga a pasta ao projeto; é pessoal)
+.vercel/
+
+# gerado pelo `node build.js` (a fonte fica em src/, mapa/, entrar/ e pwa/)
+/ficha.html
+/ficha-de-sangue.html
+/disciplinas.js
+/vantagens.js
+/loresheets.js
+/dados.js
+/dados-extra.js
+/contexto.js
+/cacador.js
+/pdf-lib.min.js
+/modelo-pdf.js
+/pdf-ficha.js
+/nuvem.js
+/app.js
+/experiencia.js
+/interface.js
+/deploy/*
+!/deploy/.gitignore
+
+# sistema
+.DS_Store
+Thumbs.db
+desktop.ini

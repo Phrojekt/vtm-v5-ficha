@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0d0b10">
+<title>Entrar · Ficha de Sangue</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Manrope:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --fundo:#0d0b10; --painel:#17131c; --painel-2:#1e1925; --linha:#ffffff1f; --linha-forte:#ffffff40;
+  --tinta:#f1eef4; --suave:#c9c4cf; --fraca:#8d8796;
+  --sangue:#a31d2c; --sangue-2:#c62a3b; --erro:#ff9b9b; --ok:#8fd9a3;
+  --titulo:'Big Shoulders Display',Impact,system-ui,sans-serif;
+  --corpo:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{
+  background:
+    radial-gradient(900px 520px at 50% -10%,#3a0a14 0%,transparent 65%),
+    radial-gradient(700px 400px at 100% 100%,#1b0f24 0%,transparent 60%),
+    var(--fundo);
+  color:var(--tinta);font-family:var(--corpo);line-height:1.5;
+  min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px 16px;
+}
+main{width:100%;max-width:420px}
+.marca{text-align:center;margin-bottom:22px}
+.marca h1{margin:0;font:800 clamp(34px,9vw,44px)/1 var(--titulo);letter-spacing:.08em;text-transform:uppercase}
+.marca h1 span{color:var(--sangue-2)}
+.marca p{margin:6px 0 0;color:var(--fraca);font-size:13px;letter-spacing:.14em;text-transform:uppercase}
+.cartao{background:var(--painel);border:1px solid var(--linha);border-radius:14px;box-shadow:0 20px 60px #0009;overflow:hidden}
+.abas{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--linha)}
+.abas button{
+  appearance:none;background:transparent;border:0;color:var(--fraca);cursor:pointer;
+  padding:15px 8px;font:700 13px var(--corpo);letter-spacing:.1em;text-transform:uppercase;
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+}
+.abas button[aria-selected="true"]{color:var(--tinta);border-bottom-color:var(--sangue-2);background:var(--painel-2)}
+.abas button:focus-visible,.btn:focus-visible,.ver:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #fff;outline-offset:2px}
+form,.logada{padding:22px 22px 20px}
+h2{margin:0 0 4px;font:700 22px/1.2 var(--titulo);letter-spacing:.06em;text-transform:uppercase}
+.sub{margin:0 0 18px;color:var(--suave);font-size:14px}
+label{display:block;margin:0 0 5px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--suave)}
+.campo{margin-bottom:14px}
+.campo small{display:block;margin-top:5px;color:var(--fraca);font-size:12.5px}
+input{
+  width:100%;background:#0f0c13;border:1px solid var(--linha-forte);border-radius:9px;color:var(--tinta);
+  padding:12px 13px;font:500 16px var(--corpo);
+}
+input::placeholder{color:#6c6676}
+input:focus{border-color:var(--sangue-2);outline:none;box-shadow:0 0 0 3px #c62a3b33}
+input[aria-invalid="true"]{border-color:var(--erro)}
+.senha{position:relative}
+.senha input{padding-right:78px}
+.ver{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);appearance:none;background:transparent;border:0;
+  color:var(--suave);cursor:pointer;font:700 12px var(--corpo);letter-spacing:.06em;text-transform:uppercase;padding:8px 10px;border-radius:6px;
+}
+.ver:hover{color:#fff;background:#ffffff14}
+.forca{height:4px;border-radius:2px;background:#ffffff1a;margin-top:8px;overflow:hidden}
+.forca i{display:block;height:100%;width:0;background:var(--erro);transition:width .2s,background .2s}
+.btn{
+  width:100%;appearance:none;border:0;border-radius:10px;background:var(--sangue);color:#fff;cursor:pointer;
+  padding:14px;font:700 15px var(--corpo);letter-spacing:.06em;text-transform:uppercase;
+  display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;
+}
+.btn:hover{background:var(--sangue-2)}
+.btn[disabled]{opacity:.6;cursor:wait}
+.btn.sec{background:transparent;border:1px solid var(--linha-forte);color:var(--tinta);margin-top:10px}
+.btn.sec:hover{background:#ffffff12}
+.aviso{min-height:22px;margin:0 0 12px;font-size:14px;border-radius:8px}
+.aviso.erro{color:var(--erro);background:#ff9b9b14;border:1px solid #ff9b9b44;padding:9px 12px}
+.aviso.info{color:var(--ok);background:#8fd9a314;border:1px solid #8fd9a344;padding:9px 12px}
+.aviso:empty{display:none}
+.aviso a,.rodape a{color:#fff}
+.aviso button.link{appearance:none;background:none;border:0;color:#fff;text-decoration:underline;font:inherit;cursor:pointer;padding:0}
+.rodape{margin:16px 4px 0;text-align:center;color:var(--fraca);font-size:13px}
+.rodape p{margin:4px 0}
+.giro{width:16px;height:16px;border:2px solid #fff6;border-top-color:#fff;border-radius:50%;animation:g .7s linear infinite}
+@keyframes g{to{transform:rotate(360deg)}}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){.giro{animation-duration:2s}.forca i{transition:none}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</head>
+<body>
+<main>
+  <div class="marca">
+    <h1>Ficha de <span>Sangue</span></h1>
+    <p>Vampiro: A Máscara · 5ª edição</p>
+  </div>
+
+  <div class="cartao">
+    <section id="logada" class="logada" hidden>
+      <h2>Você já está dentro</h2>
+      <p class="sub" id="logada-quem"></p>
+      <a class="btn" id="logada-continuar" href="../">Continuar</a>
+      <a class="btn sec" href="../mapa/">Abrir o mapa</a>
+    </section>
+
+    <div id="entrada">
+      <div class="abas" role="tablist" aria-label="Conta">
+        <button type="button" role="tab" id="aba-entrar" aria-selected="true" aria-controls="f-entrar">Entrar</button>
+        <button type="button" role="tab" id="aba-criar" aria-selected="false" aria-controls="f-criar">Criar conta</button>
+      </div>
+
+      <form id="f-entrar" role="tabpanel" aria-labelledby="aba-entrar" novalidate>
+        <h2>Bem-vindo de volta</h2>
+        <p class="sub">Suas fichas e a crônica estão esperando.</p>
+        <div class="aviso" role="alert" aria-live="assertive" data-aviso></div>
+        <div class="campo">
+          <label for="e-email">Email ou apelido</label>
+          <input id="e-email" name="email" type="text" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        </div>
+        <div class="campo">
+          <label for="e-senha">Senha</label>
+          <div class="senha">
+            <input id="e-senha" name="senha" type="password" autocomplete="current-password" required>
+            <button type="button" class="ver" data-ver="e-senha" aria-label="Mostrar a senha" aria-pressed="false">Mostrar</button>
+          </div>
+        </div>
+        <button class="btn" type="submit"><span class="giro" hidden></span><span class="rot">Entrar</span></button>
+      </form>
+
+      <form id="f-criar" role="tabpanel" aria-labelledby="aba-criar" novalidate hidden>
+        <h2>Crie sua conta</h2>
+        <p class="sub">Com a conta, suas fichas ficam guardadas no servidor e aparecem em qualquer aparelho.</p>
+        <div class="aviso" role="alert" aria-live="assertive" data-aviso></div>
+        <div class="campo">
+          <label for="c-nome">Seu nome</label>
+          <input id="c-nome" name="nome" type="text" autocomplete="nickname" maxlength="80">
+          <small>Como os outros da crônica vão ver você.</small>
+        </div>
+        <div class="campo">
+          <label for="c-email">Email</label>
+          <input id="c-email" name="email" type="email" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        </div>
+        <div class="campo">
+          <label for="c-senha">Senha</label>
+          <div class="senha">
+            <input id="c-senha" name="senha" type="password" autocomplete="new-password" minlength="8" required aria-describedby="c-dica">
+            <button type="button" class="ver" data-ver="c-senha" aria-label="Mostrar a senha" aria-pressed="false">Mostrar</button>
+          </div>
+          <div class="forca" aria-hidden="true"><i id="c-forca"></i></div>
+          <small id="c-dica">Mínimo de 8 caracteres.</small>
+        </div>
+        <div class="campo">
+          <label for="c-senha2">Repita a senha</label>
+          <input id="c-senha2" name="senha2" type="password" autocomplete="new-password" required>
+        </div>
+        <button class="btn" type="submit"><span class="giro" hidden></span><span class="rot">Criar conta e entrar</span></button>
+      </form>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <p id="rodape-conta">Esqueceu a senha? Peça ao narrador ou a quem administra o site para redefinir.</p>
+    <p><a id="voltar-link" href="../">← Voltar para as fichas</a></p>
+  </div>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  var CHAVE_CONTA = 'ficha-de-sangue:conta';
+  var CHAVE_ADOTAR = 'ficha-de-sangue:adotar';
+  var $ = function (id) { return document.getElementById(id); };
+
+  function ler(c) { try { return JSON.parse(localStorage.getItem(c) || 'null'); } catch (e) { return null; } }
+  function gravar(c, v) { try { localStorage.setItem(c, typeof v === 'string' ? v : JSON.stringify(v)); return true; } catch (e) { return false; } }
+
+  /* mesma regra do resto do site: na Vercel a API é /api no próprio endereço */
+  var contaAtual = ler(CHAVE_CONTA);
+  var api = (contaAtual && contaAtual.api) || ler(CHAVE_CONTA + ':api') || (/\.vercel\.app$/i.test(location.hostname) ? '/api' : '');
+  api = String(api || '').replace(/\/+$/, '');
+
+  /* para onde ir depois: só caminhos do próprio site (nada de endereço de fora) */
+  var base = location.pathname.replace(/\/entrar\/?(index\.html)?$/, '') || '';
+  var voltar = new URLSearchParams(location.search).get('voltar') || '';
+  function destino() {
+    if (voltar === '/mapa/' || voltar === 'mapa') return base + '/mapa/';
+    var m = /^\/\?(ficha|cronica)=[\w-]+$/.exec(voltar);
+    if (m) return base + voltar;
+    return base + '/';
+  }
+  $('voltar-link').href = destino();
+  $('logada-continuar').href = destino();
+  if (destino().indexOf('/mapa/') !== -1) $('voltar-link').textContent = '← Voltar para o mapa';
+
+  /* ---------- abas ---------- */
+  function aba(qual) {
+    var criar = qual === 'criar';
+    $('aba-entrar').setAttribute('aria-selected', String(!criar));
+    $('aba-criar').setAttribute('aria-selected', String(criar));
+    $('f-entrar').hidden = criar;
+    $('f-criar').hidden = !criar;
+    limparAvisos();
+    $(criar ? 'c-nome' : 'e-email').focus();
+    try { history.replaceState(null, '', criar ? '#criar' : location.pathname + location.search); } catch (e) {}
+  }
+  $('aba-entrar').onclick = function () { aba('entrar'); };
+  $('aba-criar').onclick = function () { aba('criar'); };
+  document.querySelectorAll('.abas button').forEach(function (b) {
+    b.addEventListener('keydown', function (ev) {
+      if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') { aba(b.id === 'aba-entrar' ? 'criar' : 'entrar'); }
+    });
+  });
+
+  /* ---------- mostrar senha ---------- */
+  document.querySelectorAll('.ver').forEach(function (b) {
+    b.onclick = function () {
+      var campo = $(b.dataset.ver);
+      var mostrar = campo.type === 'password';
+      campo.type = mostrar ? 'text' : 'password';
+      if (b.dataset.ver === 'c-senha') $('c-senha2').type = campo.type;
+      b.textContent = mostrar ? 'Ocultar' : 'Mostrar';
+      b.setAttribute('aria-pressed', String(mostrar));
+      b.setAttribute('aria-label', mostrar ? 'Ocultar a senha' : 'Mostrar a senha');
+    };
+  });
+
+  /* ---------- força da senha (só um guia visual) ---------- */
+  $('c-senha').addEventListener('input', function () {
+    var s = this.value, pts = 0;
+    if (s.length >= 8) pts++;
+    if (s.length >= 12) pts++;
+    if (/[a-z]/.test(s) && /[A-Z]/.test(s)) pts++;
+    if (/\d/.test(s) && /[^A-Za-z0-9]/.test(s)) pts++;
+    var f = $('c-forca');
+    f.style.width = (s ? Math.max(1, pts) * 25 : 0) + '%';
+    f.style.background = pts <= 1 ? '#ff9b9b' : pts === 2 ? '#e8c36a' : '#8fd9a3';
+  });
+
+  /* ---------- avisos ---------- */
+  function avisoDe(form) { return form.querySelector('[data-aviso]'); }
+  function limparAvisos() {
+    document.querySelectorAll('[data-aviso]').forEach(function (a) { a.className = 'aviso'; a.textContent = ''; });
+    document.querySelectorAll('input[aria-invalid]').forEach(function (i) { i.removeAttribute('aria-invalid'); });
+  }
+  function aviso(form, tipo, texto, campo) {
+    var a = avisoDe(form);
+    a.className = 'aviso ' + tipo;
+    a.textContent = texto;
+    if (campo) { campo.setAttribute('aria-invalid', 'true'); campo.focus(); }
+  }
+  function ocupado(form, sim, texto) {
+    var b = form.querySelector('.btn');
+    b.disabled = sim;
+    b.querySelector('.giro').hidden = !sim;
+    b.querySelector('.rot').textContent = texto;
+  }
+
+  /* ---------- chamada à API ---------- */
+  function chamar(caminho, corpo, token) {
+    var h = { 'Content-Type': 'application/json' };
+    if (token) h.Authorization = 'Bearer ' + token;
+    var ctl = new AbortController();
+    var t = setTimeout(function () { ctl.abort(); }, 20000);
+    return fetch(api + caminho, { method: corpo === undefined ? 'GET' : 'POST', headers: h, body: corpo === undefined ? undefined : JSON.stringify(corpo), signal: ctl.signal })
+      .then(function (r) {
+        clearTimeout(t);
+        return r.text().then(function (txt) {
+          var d = {}; try { d = JSON.parse(txt); } catch (e) {}
+          return { status: r.status, ok: r.ok, corpo: d };
+        });
+      }, function (e) {
+        clearTimeout(t);
+        var err = new Error(e && e.name === 'AbortError' ? 'demorou' : 'rede');
+        err.rede = true; throw err;
+      });
+  }
+
+  function mensagemDeErro(r, cadastro) {
+    if (r.status === 429) return 'Muitas tentativas seguidas. Espere um minuto e tente de novo.';
+    if (r.status === 401) return 'Email ou senha incorretos.';
+    if (r.status === 403) return (r.corpo && r.corpo.erro) || 'O cadastro está fechado. Peça um convite.';
+    if (r.status === 409) return 'Já existe uma conta com este email.';
+    if (r.status === 400) return cadastro ? 'Confira o email e use uma senha de pelo menos 8 caracteres.' : 'Confira o email e a senha.';
+    if (r.status >= 500) return 'O servidor teve um problema. Tente de novo em instantes.';
+    return (r.corpo && r.corpo.erro) || ('Erro ' + r.status + '.');
+  }
+  function mensagemDeRede(e) {
+    return e && e.message === 'demorou'
+      ? 'O servidor demorou demais para responder. Tente de novo.'
+      : 'Não consegui falar com o servidor. Confira sua internet e tente de novo.';
+  }
+
+  /* guarda a sessão no mesmo lugar e formato que o painel de Fichas e o mapa usam */
+  function abrirSessao(dados) {
+    var anterior = ler(CHAVE_CONTA);
+    var mesma = anterior && anterior.usuario && anterior.usuario.id === dados.usuario.id;
+    var ok = gravar(CHAVE_CONTA, { api: api, token: dados.token, usuario: dados.usuario, ultimaSync: mesma ? anterior.ultimaSync || null : null });
+    if (!ok) return false;
+    gravar(CHAVE_ADOTAR, '1');   /* o site leva as fichas deste navegador para a conta */
+    return true;
+  }
+
+  function terminar(form, nome) {
+    aviso(form, 'info', 'Olá, ' + nome + '! Entrando…');
+    ocupado(form, true, 'Entrando…');
+    setTimeout(function () { location.replace(destino()); }, 350);
+  }
+
+  /* ---------- entrar ---------- */
+  $('f-entrar').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var f = this, email = $('e-email').value.trim(), senha = $('e-senha').value;
+    limparAvisos();
+    if (!api) return aviso(f, 'erro', 'Este endereço não tem o servidor das fichas ligado.');
+    if (!email) return aviso(f, 'erro', 'Digite o seu email ou apelido.', $('e-email'));
+    if (!senha) return aviso(f, 'erro', 'Digite a sua senha.', $('e-senha'));
+    ocupado(f, true, 'Entrando…');
+    chamar('/auth/entrar', { email: email, senha: senha }).then(function (r) {
+      if (!r.ok) {
+        ocupado(f, false, 'Entrar');
+        aviso(f, 'erro', mensagemDeErro(r, false), r.status === 401 ? $('e-senha') : null);
+        if (r.status === 401) $('e-senha').select();
+        return;
+      }
+      if (!abrirSessao(r.corpo)) { ocupado(f, false, 'Entrar'); return aviso(f, 'erro', 'Seu navegador não deixou guardar a sessão (modo privado ou armazenamento bloqueado).'); }
+      terminar(f, r.corpo.usuario.nome);
+    }, function (e) { ocupado(f, false, 'Entrar'); aviso(f, 'erro', mensagemDeRede(e)); });
+  });
+
+  /* ---------- criar conta ---------- */
+  $('f-criar').addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    var f = this, nome = $('c-nome').value.trim(), email = $('c-email').value.trim(), s1 = $('c-senha').value, s2 = $('c-senha2').value;
+    limparAvisos();
+    if (!api) return aviso(f, 'erro', 'Este endereço não tem o servidor das fichas ligado.');
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return aviso(f, 'erro', 'Digite um email válido.', $('c-email'));
+    if (s1.length < 8) return aviso(f, 'erro', 'A senha precisa ter pelo menos 8 caracteres.', $('c-senha'));
+    if (s1 !== s2) return aviso(f, 'erro', 'As duas senhas não são iguais.', $('c-senha2'));
+    ocupado(f, true, 'Criando…');
+    var corpo = { email: email, senha: s1 }; if (nome) corpo.nome = nome;
+    chamar('/auth/cadastro', corpo).then(function (r) {
+      if (!r.ok) {
+        ocupado(f, false, 'Criar conta e entrar');
+        if (r.status === 409) {
+          var a = avisoDe(f); a.className = 'aviso erro'; a.textContent = 'Já existe uma conta com este email. ';
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'link'; b.textContent = 'Entrar com ele';
+          b.onclick = function () { $('e-email').value = email; aba('entrar'); $('e-senha').focus(); };
+          a.appendChild(b); $('c-email').setAttribute('aria-invalid', 'true');
+          return;
+        }
+        return aviso(f, 'erro', mensagemDeErro(r, true));
+      }
+      if (!abrirSessao(r.corpo)) { ocupado(f, false, 'Criar conta e entrar'); return aviso(f, 'erro', 'Seu navegador não deixou guardar a sessão (modo privado ou armazenamento bloqueado).'); }
+      terminar(f, r.corpo.usuario.nome);
+    }, function (e) { ocupado(f, false, 'Criar conta e entrar'); aviso(f, 'erro', mensagemDeRede(e)); });
+  });
+
+  /* ---------- já está logada? ---------- */
+  function mostrarLogada(u) {
+    $('entrada').hidden = true;
+    $('logada').hidden = false;
+    $('logada-quem').textContent = u.nome + ' · ' + u.email + '. Para trocar de conta, use "Sair" no painel Fichas.';
+    $('rodape-conta').hidden = true;
+  }
+  if (contaAtual && contaAtual.token && contaAtual.usuario && api) {
+    chamar('/eu', undefined, contaAtual.token).then(function (r) {
+      if (r.ok && r.corpo.usuario) mostrarLogada(r.corpo.usuario);
+    }, function () {});
+  }
+
+  if (location.hash === '#criar') aba('criar'); else $('e-email').focus();
+  if (!api) { aviso($('f-entrar'), 'erro', 'Este endereço não tem o servidor das fichas ligado. Abra o site pelo endereço oficial.'); }
+})();
+</script>
+</body>
+</html>

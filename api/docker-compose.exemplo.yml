@@ -1,0 +1,17 @@
+# Serviço da API para acrescentar na VPS. Ele entra na mesma rede do
+# Postgres do Precifa; ajuste "rede_do_precifa" e o nome do host do banco
+# (no .env, DATABASE_URL=...@<container do postgres>:5432/fichas).
+services:
+  fichas-api:
+    build: .
+    container_name: fichas-api
+    restart: unless-stopped
+    env_file: .env
+    networks: [rede_do_precifa]
+    # Só escuta na máquina: quem expõe para fora, com HTTPS, é o proxy reverso.
+    ports: ["127.0.0.1:3010:3000"]
+    mem_limit: 256m
+
+networks:
+  rede_do_precifa:
+    external: true

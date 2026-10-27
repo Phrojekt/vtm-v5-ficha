@@ -1,0 +1,5 @@
+{
+  "_leia": "Configuração da publicação na Vercel. O build gera deploy/vercel.json a partir daqui.",
+  "site": "https://vtmfichas.vercel.app",
+  "apiOrigem": "https://fichas.2-25-189-171.sslip.io"
+}

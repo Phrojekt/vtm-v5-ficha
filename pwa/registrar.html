@@ -1,0 +1,21 @@
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#100f16">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ficha de Sangue">
+<link rel="apple-touch-icon" href="/icones/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/icones/favicon-64.png">
+<script>
+/* instalar como app: o navegador avisa quando dá para instalar; o site guarda o aviso
+   e mostra o botão "Instalar app" (fichas: no topo; mapa e entrar: não mostram botão) */
+(function () {
+  if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
+  window.addEventListener('load', function () { navigator.serviceWorker.register('/sw.js').catch(function () {}); });
+  window.addEventListener('beforeinstallprompt', function (ev) {
+    ev.preventDefault(); window.__fsInstalar = ev;
+    document.dispatchEvent(new Event('fs-instalavel'));
+  });
+  window.addEventListener('appinstalled', function () { window.__fsInstalar = null; document.dispatchEvent(new Event('fs-instalavel')); });
+})();
+</script>
