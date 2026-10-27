@@ -44,6 +44,8 @@ async def dano(p):
     await p.evaluate("() => { S.atr.vigor = 2; render(); }")  # Vitalidade 5
     b = lambda n, tipo, d: f'{RAIL} [data-act=dano][data-trilha={n}][data-tipo={tipo}][data-d="{d}"]'
     q = lambda n, d: f'{RAIL} [data-act=dano-qtd][data-trilha={n}][data-d="{d}"]'
+    ordem = await p.evaluate("[...document.querySelectorAll('#col-rail [data-mesa] .qtd button')].slice(0, 2).map(b => b.dataset.d)")
+    ok(ordem == ['1', '-1'], f'no seletor de quantidade, o + vem em cima ({ordem})')
     for _ in range(3): await p.click(q('saude', 1))
     await p.click(b('saude', 'sup', 1))
     ok(await p.evaluate('[S.saude.sup, S.saude.agg]') == [2, 0], 'vampiro: 4 superficiais viram 2 (metade, arredondada para cima)')
@@ -88,6 +90,15 @@ async def poderes(p):
     await p.click('#modo-ver'); await p.wait_for_timeout(300)
     ok(await p.locator('#sheet .pw-card').count() == 1 and 'Soco que racha concreto.' in await p.inner_text('#sheet .pw-card'), 'Jogar mostra o cartão com a anotação')
     ok(await p.locator('#sheet .pw-card dl.pw-mec dt').count() >= 1, 'cartão traz custo/parada/duração')
+    ok(await p.locator('#sheet .pw-card .pw-sis').count() == 1, 'cartão explica como o poder funciona')
+    await p.click('#modo-editar'); await p.wait_for_timeout(200)
+    await p.evaluate("() => { S.disc = [{nome:'Dominação', nivel:1, poderes:['Compelir'], rituais:''}]; render(); }")
+    await p.click('#aba-disciplinas'); await p.wait_for_timeout(150)
+    res = await p.inner_text('#col-main .pw-card .pw-res')
+    ok('Inteligência + Determinação' in res and 'desprevenido' in res, 'Compelir diz quem resiste e como')
+    ok(await p.locator('#col-main .disc-regras li').count() >= 5, 'Dominação traz as regras gerais (olhar, geração, falha total…)')
+    ok(await p.evaluate("Object.values(DISCIPLINAS).every(d => d.poderes.every(p => p.sis))"), 'todo poder do catálogo tem sistema')
+    ok(await p.locator('#col-main .pw-escolher .pw-l-sis').count() >= 1, 'a lista de escolha também mostra o sistema')
 
 async def main():
     async with async_playwright() as pw:

@@ -233,6 +233,7 @@ function uiDefinirModo(m) {
   el('modo-ver').setAttribute('aria-pressed', String(m === 'ver'));
   el('modo-editar').setAttribute('aria-pressed', String(m === 'editar'));
   uiSecoes();
+  if (typeof evoBarra === 'function') evoBarra();
 }
 /* o narrador ou a impressão pedem o modo de edição/leitura sem trocar de ficha */
 function entrarViewFicha() { uiDefinirModo('ver'); }
@@ -490,7 +491,7 @@ function uiMesa() {
     <summary><span class="mesa-tit">Na mesa</span>${resumo}</summary>
     ${cards[0].outerHTML.replace(' data-mesa', '').replace('<h2>Vitais</h2>', '<h2>Na mesa</h2>')
       .replace('<div class="card-b">', '<div class="card-b"><p class="mesa-nota">Marque dano e os medidores aqui mesmo, sem entrar em Editar.</p>')
-      .replace(/<\/div>\s*<\/div>\s*$/, `<div class="mesa-xp"><span>Experiência: <b>${xpDisponivel()}</b> disponível</span><button type="button" class="btn sm" data-acao="xp">Gastar XP</button></div></div></div>`)}
+      .replace(/<\/div>\s*<\/div>\s*$/, `<div class="mesa-xp"><span><b>${xpDisponivel()}</b> XP disponíveis</span><span class="mesa-xp-b"><button type="button" class="btn sm" data-acao="xp">Registrar</button>${ehCacador() ? '' : '<button type="button" class="btn sm primary" data-evo="entrar">Evoluir</button>'}</span></div></div></div>`)}
   </details>`;
   el('mesa-d').addEventListener('toggle', e => { if (!matchMedia('(min-width: 921px)').matches) UI.mesaAberta = e.target.open; });
 }

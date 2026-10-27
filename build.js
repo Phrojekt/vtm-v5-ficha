@@ -13,7 +13,7 @@ if (corte < 10) throw new Error('não encontrei o bloco <style> em src/pagina.ht
 const cabeca = pagina.slice(0, corte).trim();
 const corpo = pagina.slice(corte).replace(/<script src="[^"]+"><\/script>\s*/g, '').trim();
 
-const FONTES = ['disciplinas.js', 'vantagens.js', 'loresheets.js', 'dados.js',
+const FONTES = ['disciplinas.js', 'disciplinas-sistema.js', 'vantagens.js', 'loresheets.js', 'dados.js',
                 'dados-extra.js', 'contexto.js', 'cacador.js',
                 'pdf-lib.min.js', 'modelo-pdf.js', 'pdfjs.min.js', 'pdfjs.worker.min.js',
                 'pdf-ficha.js', 'nuvem.js', 'app.js', 'experiencia.js', 'interface.js', 'importar.js'];

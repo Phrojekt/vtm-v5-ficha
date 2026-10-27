@@ -25,7 +25,7 @@ function novoEstado() {
     saude: { sup:0, agg:0 }, vontade: { sup:0, agg:0 },
     danoMetade: true, registroMesa: [], notasPoder: {},
     bpOverride: null, distribHab: 'balanceado',
-    xpTotal: 0, xpGasto: 0,
+    xpTotal: 0, xpGasto: 0, xpLog: [],
     /* Caçador: A Revanche */
     credo: '', impeto: '', org: '', trunfos: [], desespero: 0, perigo: 0,
     mar: '', xpCompras: [], loresheet: '',
@@ -120,11 +120,13 @@ const discDoCla = () => (CLAS[S.meta.cla] ? CLAS[S.meta.cla].disc : []);
 
 /* ---------- componentes ---------- */
 function dots(path, valor, max, extra) {
-  let h = `<span class="dots" role="group" aria-label="${esc(extra || '')}">`;
+  /* modo Evoluir: marca o próximo ponto e mostra o custo (experiencia.js) */
+  const evo = typeof evoDots === 'function' ? evoDots(path, valor, max) : null;
+  let h = `<span class="dots${evo ? ' evo' : ''}" role="group" aria-label="${esc(extra || '')}">`;
   for (let i = 1; i <= max; i++) {
-    h += `<button type="button" class="dot${i <= valor ? ' on' : ''}" data-dot="${esc(path)}" data-i="${i}" data-max="${max}" aria-label="${i}"></button>`;
+    h += `<button type="button" class="dot${i <= valor ? ' on' : ''}${evo ? evo.classe(i) : ''}" data-dot="${esc(path)}" data-i="${i}" data-max="${max}" aria-label="${i}"></button>`;
   }
-  return h + '</span>';
+  return h + '</span>' + (evo ? evo.etiqueta : '');
 }
 function trilha(nome, total, sup, agg) {
   let h = `<div class="track">`;
@@ -182,7 +184,7 @@ function blocoDano(nome) {
     ${trilha(nome, total, o.sup, o.agg)}
     <p class="dano-st" data-k="${st.k}"><b>${esc(st.t)}</b>${o.sup || o.agg ? `<span>${o.sup} superficial · ${o.agg} agravado</span>` : ''}</p>
     <div class="dano-ctl" role="group" aria-label="Marcar dano em ${rot}">
-      <span class="qtd"><button type="button" data-act="dano-qtd" data-trilha="${nome}" data-d="-1" aria-label="Menos">−</button><output aria-label="Quantidade">${q}</output><button type="button" data-act="dano-qtd" data-trilha="${nome}" data-d="1" aria-label="Mais">+</button></span>
+      <span class="qtd"><button type="button" data-act="dano-qtd" data-trilha="${nome}" data-d="1" aria-label="Mais">+</button><output aria-label="Quantidade">${q}</output><button type="button" data-act="dano-qtd" data-trilha="${nome}" data-d="-1" aria-label="Menos">−</button></span>
       <span class="dano-l">Sofrer</span>${b('sup', 1, 'Superficial')}${b('agg', 1, 'Agravado', 'agg')}
       <span class="dano-l">Curar</span>${b('sup', -1, 'Superficial', 'ghost')}${b('agg', -1, 'Agravado', 'ghost')}
     </div>
@@ -857,7 +859,7 @@ function cartaoPoder(d, p, o) {
   const k = chaveNotaPoder(d.nome, p.pt);
   const nota = (S.notasPoder || {})[k] || '';
   const mec = [
-    ['Custo', p.c], ['Parada', p.pool], ['Resistência', p.vs], ['Duração', p.dur]
+    ['Custo', p.c], ['Parada', p.pool], ['Parada oposta', p.vs], ['Duração', p.dur]
   ].filter(x => x[1]);
   const dl = mec.length ? `<dl class="pw-mec">${mec.map(([r, v]) => `<div><dt>${r}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>` : '';
   const marcas = [p.am ? `<span class="tag ${temAm ? '' : 'blood'}">Amálgama: ${esc(p.am)}</span>` : '',
@@ -869,12 +871,29 @@ function cartaoPoder(d, p, o) {
       ${o.editar ? `<button type="button" class="x" data-act="rm-pw" data-i="${o.idx}" data-nome="${esc(p.pt)}" aria-label="Tirar ${esc(p.pt)}">✕</button>` : ''}</header>
     ${p.ds ? `<p class="pw-ds">${esc(p.ds)}</p>` : ''}
     ${dl}
+    ${p.sis ? `<div class="pw-sis"><span class="pw-rot">Como funciona</span><p>${esc(p.sis)}</p></div>` : ''}
+    ${p.res ? `<div class="pw-res"><span class="pw-rot">Quem resiste e como</span><p>${esc(p.res)}</p></div>` : ''}
     ${marcas ? `<div class="pw-tags">${marcas}</div>` : ''}
     ${o.editar
       ? `<label class="pw-nota"><span class="lbl">Suas anotações</span><textarea class="f" data-bind="notasPoder.${k}" rows="2" placeholder="Texto completo do livro, como você usa, efeitos de sistema…">${esc(nota)}</textarea></label>`
       : (nota ? `<p class="pw-nota-t">${esc(nota)}</p>` : '')}
     ${botaoFome ? `<div class="pw-acoes">${botaoFome}</div>` : ''}
   </article>`;
+}
+
+/* regras que valem para todos os poderes da Disciplina */
+function blocoRegrasDisc(nome) {
+  const r = (DISCIPLINAS[nome] || {}).regras || [];
+  if (!r.length) return '';
+  const k = 'regras:' + nome;
+  return `<details class="disc-regras" data-pw-abrir="${esc(k)}"${PW_ABERTOS.has(k) ? ' open' : ''}>
+    <summary>Regras gerais de ${esc(nome)} <span class="note">${r.length} ${r.length > 1 ? 'pontos' : 'ponto'}</span></summary>
+    <ul>${r.map(x => `<li>${esc(x)}</li>`).join('')}</ul>
+  </details>`;
+}
+/* linha curta de mecânica para a lista de escolha */
+function mecCurta(p) {
+  return [p.c, p.pool ? p.pool + (p.vs ? ' contra ' + p.vs : '') : (p.vs ? 'resistido por ' + p.vs : ''), p.dur].filter(Boolean).join(' · ');
 }
 
 function cardDisciplinas() {
@@ -905,6 +924,7 @@ function cardDisciplinas() {
             <button class="x" data-act="rm-disc" data-i="${idx}" aria-label="Remover ${esc(d.nome)}" style="margin-left:auto">✕</button>
           </div>
           <div class="disc-b">
+            ${blocoRegrasDisc(d.nome)}
             ${(() => {
               const meus = escolhidos.map(nome => info.poderes.find(p => p.pt === nome) || { pt: nome, lv: '', ds: '', f: 'Básico' });
               const livres = info.poderes.filter(p => !escolhidos.includes(p.pt) && p.lv <= d.nivel);
@@ -918,7 +938,10 @@ function cardDisciplinas() {
                   <span><strong>${esc(p.pt)}</strong> <span class="d">${esc(p.ds)}</span>
                     ${p.am ? `<span class="tag ${temAm ? '' : 'blood'}">Amálgama: ${esc(p.am)}</span>` : ''}
                     ${p.ex ? `<span class="tag">exige ${esc(p.ex)}</span>` : ''}
-                    ${p.f !== 'Básico' ? `<span class="tag">${esc(p.f)}</span>` : ''}</span>
+                    ${p.f !== 'Básico' ? `<span class="tag">${esc(p.f)}</span>` : ''}
+                    ${mecCurta(p) ? `<span class="pw-l-mec">${esc(mecCurta(p))}</span>` : ''}
+                    ${p.sis ? `<span class="pw-l-sis">${esc(p.sis)}</span>` : ''}
+                    ${p.res ? `<span class="pw-l-res"><b>Resistência:</b> ${esc(p.res)}</span>` : ''}</span>
                 </label></div>`;
               };
               const falta = d.nivel - escolhidos.length;
@@ -1044,27 +1067,40 @@ function cardMoralidade() {
   <div class="card">
     <div class="card-h"><h2>Notas &amp; experiência</h2></div>
     <div class="card-b">
-      <div class="fields c3" style="margin-bottom:12px">
-        <div><label class="lbl" for="f-xpt">XP total</label><input class="f box" id="f-xpt" type="number" min="0" data-bind="xpTotal" value="${esc(S.xpTotal)}"></div>
-        <div><label class="lbl" for="f-xpg">XP gasto</label><input class="f box" id="f-xpg" type="number" min="0" data-bind="xpGasto" value="${esc(S.xpGasto)}"></div>
-        <div><label class="lbl">Disponível</label><div style="font-family:var(--f-disp);font-weight:700;font-size:24px;padding-top:2px">${(Number(S.xpTotal) || 0) - (Number(S.xpGasto) || 0)}</div></div>
-      </div>
-      ${(S.xpCompras && S.xpCompras.length) ? `<div style="margin-bottom:12px;padding:10px;background:var(--panel-2);border-radius:var(--r);border-left:3px solid var(--blood)">
-        <span class="lbl">Comprado com experiência</span>
-        ${S.xpCompras.map(c => `<div class="bline"><span class="t">${esc(c.rot)}${c.em ? ` <small style="text-transform:none;letter-spacing:0;color:var(--ink-3)">${esc(new Date(c.em).toLocaleDateString('pt-BR'))}</small>` : ''}</span><span class="v">${c.custo} xp</span></div>`).join('')}
-        <p class="note" style="margin:6px 0 0">Esses pontos já estão somados nos traços acima e ficam fora da conta de criação.</p>
-      </div>` : ''}
-      ${blocoXP(false)}
-      <div class="adder" style="margin:0 0 12px;border-top:0;padding-top:0">
-        <button type="button" class="btn primary" data-acao="xp">Gastar experiência</button>
-        <span class="note">A tabela de custos e a compra passo a passo: escolha o que subir e o app calcula e desconta.</span>
-      </div>
+      ${blocoExperiencia()}
       <div class="fields c2">
         <div><label class="lbl" for="f-apar">Aparência &amp; distintivos</label><textarea class="f" id="f-apar" data-bind="meta.aparencia">${esc(S.meta.aparencia)}</textarea></div>
         <div><label class="lbl" for="f-not">Notas</label><textarea class="f" id="f-not" data-bind="notas">${esc(S.notas)}</textarea></div>
       </div>
     </div>
   </div>`;
+}
+
+/* resumo de experiência no quadro de Notas: saldo, os dois caminhos e o ajuste à mão */
+function blocoExperiencia() {
+  const disp = (Number(S.xpTotal) || 0) - (Number(S.xpGasto) || 0);
+  const ultimo = (typeof xpLivro === 'function' ? xpLivro().tudo : [])[0];
+  const cacador = ehCacador();
+  return `<div class="xp-resumo">
+      <div class="xp-saldo">
+        <div class="disp"><span class="olho">Disponível</span><b>${disp}</b></div>
+        <div><span class="olho">Ganho</span><b>${Number(S.xpTotal) || 0}</b></div>
+        <div><span class="olho">Gasto</span><b>${Number(S.xpGasto) || 0}</b></div>
+      </div>
+      <div class="xp-resumo-a">
+        ${cacador ? '' : `<button type="button" class="btn primary" data-evo="entrar">Evoluir na ficha</button>`}
+        <button type="button" class="btn" data-acao="xp">${cacador ? 'Registrar e histórico' : 'Registrar sessão, outras compras e histórico'}</button>
+      </div>
+      ${ultimo ? `<p class="note xp-ultimo">Último registro: ${esc(ultimo.txt)} (${ultimo.xp > 0 ? '+' : ''}${ultimo.xp} XP${ultimo.em ? ', ' + esc(xpData(ultimo.em)) : ''}).</p>` : ''}
+    </div>
+    ${blocoXP(false)}
+    <details class="xp-manual">
+      <summary>Ajustar total e gasto à mão <span class="note">para fichas trazidas de outro lugar</span></summary>
+      <div class="fields c2">
+        <div><label class="lbl" for="f-xpt">XP ganho no total</label><input class="f box" id="f-xpt" type="number" min="0" data-bind="xpTotal" value="${esc(S.xpTotal)}"></div>
+        <div><label class="lbl" for="f-xpg">XP gasto</label><input class="f box" id="f-xpg" type="number" min="0" data-bind="xpGasto" value="${esc(S.xpGasto)}"></div>
+      </div>
+    </details>`;
 }
 
 /* "neófita 26% · ancillae 33% · ancião 27% …" */
@@ -1290,6 +1326,7 @@ function render() {
   sincronizarSistema();
   if (ehCacador()) railCacador(); else renderRail();
   if (typeof uiDepoisDeRender === 'function') uiDepoisDeRender();
+  if (typeof evoBarra === 'function') evoBarra();
   devolverFoco(foco);
   salvar();
 }
@@ -1407,6 +1444,7 @@ function renderFicha() {
           .sort((a, b) => (a.lv || 0) - (b.lv || 0));
         return `<section class="sh-disc">
           <header class="sh-disc-h"><h3>${esc(d.nome)}</h3>${pips(d.nivel, 5)}</header>
+          ${blocoRegrasDisc(d.nome)}
           ${poderes.length ? `<div class="pw-cards">${poderes.map(p => cartaoPoder(d, p)).join('')}</div>` : '<p class="sh-p note">Nenhum poder escolhido.</p>'}
           ${d.rituais ? `<p class="sh-p sh-rit"><strong>${esc((CATALOGO_RITUAL[d.nome] || {}).plural || 'Rituais')}</strong><br>${esc(d.rituais).replace(/\n/g, '<br>')}</p>` : ''}
         </section>`;
@@ -2341,6 +2379,7 @@ document.addEventListener('click', (ev) => {
 
   if (t.dataset.dot != null) {
     const path = t.dataset.dot, i = Number(t.dataset.i);
+    if (typeof evoClique === 'function' && evoClique(path, i)) return;
     if (path === 'fome' || path === 'desespero' || path === 'perigo') S[path] = (S[path] === i ? i - 1 : i);
     else {
       const atual = Number(getPath(path)) || 0;

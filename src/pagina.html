@@ -755,6 +755,70 @@ fieldset.xp-comprar legend{padding:0 6px}
 .mesa-xp span{flex:1; font-size:14px; color:var(--ink-2)}
 .mesa-xp b{font-family:var(--f-disp); font-size:18px; color:var(--ink)}
 @media (max-width:520px){ .xp-saldo b{font-size:20px} .xp-cats{grid-template-columns:1fr 1fr} }
+.mesa-xp .mesa-xp-b{flex:none; display:flex; gap:6px}
+/* experiência: diálogo */
+.xp-ganhar{margin:0 0 14px}
+.xp-ganhar .linha{flex-wrap:wrap; margin-top:4px}
+.xp-ganhar #xp-ganho{max-width:90px}
+.xp-ganhar #xp-nota{max-width:none; flex:1; min-width:160px}
+.xp-evo-cta{display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:12px 14px; border:1px solid var(--blood); border-radius:10px; background:var(--blood-soft); margin:0 0 16px}
+.xp-evo-cta > div{flex:1; min-width:200px}
+.xp-evo-cta b{display:block; font-family:var(--f-ui); font-weight:600; font-size:15.5px}
+.xp-evo-cta span{display:block; font-size:14px; color:var(--ink-2); line-height:1.4}
+.xp-comprar .nv-h3, .xp-livro .nv-h3{margin:0 0 8px}
+.xp-chips{display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; scrollbar-width:thin}
+.xp-chip{flex:none; font:600 14.5px/1 var(--f-ui); padding:8px 12px; border-radius:99px; border:1px solid var(--line-2); background:var(--ground); color:var(--ink-2); cursor:pointer}
+.xp-chip[aria-selected="true"]{background:var(--blood); border-color:var(--blood); color:#fff}
+.xp-regra{margin:6px 0 10px}
+.xp-lista{max-height:min(46vh,380px); overflow:auto; border:1px solid var(--line); border-radius:8px; background:var(--ground); padding:2px 10px}
+.xp-lista .xp-g{margin:10px 0 2px; font:600 12.5px/1.2 var(--f-ui); letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3)}
+.xp-lista ul{list-style:none; margin:0; padding:0}
+.xp-lista li{display:flex; gap:10px; align-items:center; padding:7px 0; border-bottom:1px dotted var(--line)}
+.xp-lista li:last-child{border-bottom:0}
+.xp-lista li.nao .xp-it b{color:var(--ink-3)}
+.xp-it{flex:1; min-width:0}
+.xp-it b{display:block; font-weight:600; font-size:14.5px}
+.xp-it small{display:block; font-size:12.5px; color:var(--ink-3); line-height:1.3}
+.xp-it small.ruim{color:var(--bad)}
+.xp-lista .btn{flex:none; min-width:66px; justify-content:center}
+.xp-livro{margin-top:18px}
+.xp-livro ol{list-style:none; margin:0; padding:0; border-top:1px solid var(--line)}
+.xp-livro li{display:grid; grid-template-columns:96px minmax(0,1fr) auto auto; gap:10px; align-items:center; padding:6px 0; border-bottom:1px dotted var(--line); font-size:14.5px}
+.xp-d{font-size:12.5px; color:var(--ink-3); white-space:nowrap}
+.xp-livro b{font-family:var(--f-ui); font-weight:700; white-space:nowrap; text-align:right; min-width:42px; font-variant-numeric:lining-nums tabular-nums}
+.xp-livro li.g b{color:var(--ok, #2d6a3e)}
+.xp-livro li.c b{color:var(--blood-ink)}
+.xp-livro li.anterior{color:var(--ink-3); font-style:italic}
+@media (max-width:520px){ .xp-livro li{grid-template-columns:minmax(0,1fr) auto auto} .xp-livro .xp-d{grid-column:1 / -1; margin-bottom:-6px} }
+/* experiência: quadro de Notas */
+.xp-resumo{display:flex; flex-direction:column; gap:10px; margin-bottom:12px}
+.xp-resumo .xp-saldo{margin:0; max-width:520px}
+.xp-resumo-a{display:flex; gap:8px; flex-wrap:wrap}
+.xp-ultimo{margin:0}
+.xp-manual{margin:0 0 14px; font-size:14px}
+.xp-manual summary{cursor:pointer; padding:4px 0; font-family:var(--f-ui); font-weight:600}
+.xp-manual .fields{margin-top:8px; max-width:520px}
+/* modo Evoluir */
+.evo-btn[aria-pressed="true"]{background:var(--blood); border-color:var(--blood); color:#fff}
+.evo-btn b{font-weight:700; margin-left:4px}
+.evo-barra{position:fixed; left:0; right:0; bottom:0; z-index:60; background:var(--panel); border-top:2px solid var(--blood); box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+.evo-in{max-width:1240px; margin:0 auto; padding:10px 20px calc(10px + env(safe-area-inset-bottom)); display:flex; gap:14px; align-items:center; flex-wrap:wrap}
+.evo-txt{flex:1; min-width:220px}
+.evo-txt b{display:block; font-family:var(--f-ui); font-weight:700; font-size:16px}
+.evo-txt span{display:block; font-size:14px; color:var(--ink-2); line-height:1.4}
+.evo-txt em{color:var(--bad); font-style:normal; font-weight:600}
+.evo-acoes{display:flex; gap:8px; flex-wrap:wrap}
+body.evo-on{padding-bottom:calc(var(--evo-h, 96px) + 8px)}
+body.evo-on .tabbar{display:none!important}
+.dots.evo .dot.evo-prox{box-shadow:0 0 0 2px var(--blood); cursor:copy}
+.dots.evo .dot.evo-pend{background:var(--blood); border-color:var(--blood); box-shadow:0 0 0 3px var(--blood-soft); animation:evoPulso 1.2s ease-in-out infinite}
+.dots.evo .dot.evo-sai{opacity:.35; outline:2px dashed var(--blood); outline-offset:1px}
+@keyframes evoPulso{50%{box-shadow:0 0 0 5px var(--blood-soft)}}
+@media (prefers-reduced-motion:reduce){ .dots.evo .dot.evo-pend{animation:none} }
+.evo-custo{font:600 12px/1 var(--f-ui); color:var(--blood-ink); background:var(--blood-soft); border-radius:99px; padding:3px 7px; margin-left:6px; white-space:nowrap; vertical-align:middle}
+.evo-custo.falta{color:var(--ink-3); background:transparent; border:1px dashed var(--line-2)}
+.evo-custo.max{color:var(--ink-3); background:transparent}
+body.evo-on .avisos{bottom:calc(var(--evo-h, 90px) + 12px)}
 /* ---- especializações ---- */
 .esp-lista{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill,minmax(min(250px,100%),1fr)); gap:6px 18px}
 .esp-lista li{display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px dotted var(--line); min-width:0}
@@ -912,6 +976,19 @@ body{font-size:15.5px; line-height:1.55}
 .pw-mec div{min-width:0}
 .pw-mec dt{font-family:var(--f-ui); font-weight:600; font-size:13px; color:var(--ink-3)}
 .pw-mec dd{margin:0; line-height:1.35}
+.pw-sis,.pw-res{border-top:1px dashed var(--line); padding-top:6px}
+.pw-sis p,.pw-res p{margin:2px 0 0; font-size:14px; line-height:1.5}
+.pw-rot{font-family:var(--f-ui); font-weight:600; font-size:12.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3)}
+.pw-res .pw-rot{color:var(--blood-ink)}
+.pw-res p{border-left:2px solid var(--blood); padding-left:8px}
+.pw-l-mec,.pw-l-sis,.pw-l-res{display:block; margin-top:3px; font-size:13px; line-height:1.45; color:var(--ink-2)}
+.pw-l-mec{font-family:var(--f-ui); font-weight:600; color:var(--ink-3)}
+.pw-l-res b{color:var(--blood-ink); font-weight:600}
+.disc-regras{border:1px solid var(--line); border-radius:8px; background:var(--ground); margin:0 0 10px; padding:0 12px}
+.disc-regras summary{cursor:pointer; padding:8px 0; font-family:var(--f-ui); font-weight:600; font-size:14px}
+.disc-regras ul{margin:0 0 10px; padding-left:18px; font-size:14px; line-height:1.5}
+.disc-regras li+li{margin-top:4px}
+@media print{.disc-regras{display:none}}
 .pw-tags{display:flex; flex-wrap:wrap; gap:4px}
 .pw-nota{display:block}
 .pw-nota textarea{min-height:46px; font-size:14px; background:var(--panel)}
@@ -1034,7 +1111,7 @@ h1,h2,h3,h4,.pw-card h4,.md-g b,.qtd output,.vital-h .n{font-variant-numeric:lin
             <div class="menu-w so-dono">
               <button type="button" class="btn" id="btn-ficha-mais" aria-label="Mais ações da ficha" aria-haspopup="menu" aria-expanded="false" aria-controls="menu-ficha"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg><span class="rot-longo">Mais</span></button>
               <div class="menu" id="menu-ficha" role="menu" aria-label="Mais ações da ficha" hidden>
-                <button type="button" class="mi" role="menuitem" data-acao="xp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v18M7 8l5-5 5 5"/><path d="M5 21h14"/></svg><span><b>Gastar experiência</b><small>Tabela de custos e compra passo a passo</small></span></button>
+                <button type="button" class="mi" role="menuitem" data-acao="xp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v18M7 8l5-5 5 5"/><path d="M5 21h14"/></svg><span><b>Experiência</b><small>Registrar sessão, comprar e histórico</small></span></button>
                 <button type="button" class="mi" role="menuitem" data-acao="compartilhar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg><span><b>Crônica e compartilhar</b><small>Pôr numa crônica, link de leitura, entregar</small></span></button>
                 <button type="button" class="mi" role="menuitem" data-acao="historico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg><span><b>Histórico de versões</b><small>Ver, comparar e voltar atrás</small></span></button>
                 <hr>
@@ -1064,6 +1141,7 @@ h1,h2,h3,h4,.pw-card h4,.md-g b,.qtd output,.vital-h .n{font-variant-numeric:lin
         <button type="button" class="btn sm" id="btn-sortear" title="Sorteia a ficha inteira de novo com os parâmetros da Forja">Sortear de novo</button>
         <button type="button" class="btn sm" id="btn-forja" aria-pressed="false" aria-controls="col-main">Forja</button>
         <button type="button" class="btn sm ghost" id="btn-desfazer" hidden title="Volta para a ficha de antes do sorteio">Desfazer sorteio</button>
+        <button type="button" class="btn sm evo-btn" id="btn-evoluir" aria-pressed="false" title="Gastar experiência clicando nos pontos da ficha">Evoluir</button>
         <button type="button" class="validacao" id="validacao" data-estado="ok">Criação</button>
       </div>
     </div>
@@ -1165,7 +1243,9 @@ h1,h2,h3,h4,.pw-card h4,.md-g b,.qtd output,.vital-h .n{font-variant-numeric:lin
   </form>
 </dialog>
 
+<div id="evo-barra" class="evo-barra no-print" hidden></div>
 <script src="disciplinas.js"></script>
+<script src="disciplinas-sistema.js"></script>
 <script src="vantagens.js"></script>
 <script src="loresheets.js"></script>
 <script src="dados.js"></script>

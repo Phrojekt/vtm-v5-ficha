@@ -43,7 +43,9 @@ const FONTES = {
   'Amor Manchado':               { nome:'Blood Stained Love',           padrao:false, grupo:'outros' },
   'Succubus Club':               { nome:'Live from the Succubus Club',  padrao:false, grupo:'outros' },
   'Fachada Esfarrapada':         { nome:'Tattered Façade',              padrao:false, grupo:'outros' },
-  'Ruas em Vermelho':            { nome:'Let the Streets Run Red',      padrao:false, grupo:'outros' }
+  'Ruas em Vermelho':            { nome:'Let the Streets Run Red',      padrao:false, grupo:'outros' },
+  'Cortes dos Condenados':       { nome:'Courts of the Damned',         padrao:false, grupo:'outros' },
+  'Winter’s Teeth':              { nome:'Winter’s Teeth',               padrao:false, grupo:'outros' }
 };
 
 const P = (lv, pt, en, ds, m) => Object.assign({ lv, pt, en, ds, f:'Básico' }, m || {});
@@ -411,6 +413,129 @@ const DISCIPLINAS = {
 ]}
 
 };
+
+/* Poderes de suplementos que não estavam no catálogo. Mesma
+   procedência dos demais (valores da wiki oficial, resumos próprios).
+   Ficam fora do sorteio quando o livro não está ligado na Forja. */
+const PODERES_EXTRA = {
+  'Auspícios': [
+    P(2,'Rastro Infalível','Unerring Pursuit','Marca alguém e sabe onde ele está, noite após noite.',
+      {am:'Dominação 1', c:'Um Teste de Fome', dur:'Uma noite, mais uma por sucesso', pool:'Determinação + Auspícios', f:'Sabá'})
+  ],
+  'Dominação': [
+    P(2,'A Voz Roubada','The Stolen Voice','Tira da vítima a fala, a escrita e os gestos.',
+      {c:'Um Teste de Fome', dur:'Uma cena', pool:'Autocontrole + Dominação', vs:'Determinação + Performance', f:'Fachada Esfarrapada'}),
+    P(3,'Cadeia de Comando','Chain of Command','O Hipnotizado cumpre ordens complexas com consciência e arregimenta ajuda.',
+      {ex:'Hipnotizar', c:'Um Teste de Fome', dur:'Até cumprir a ordem ou a cena acabar', f:'Cortes dos Condenados'}),
+    P(4,'Tabula Rasa','Tabula Rasa','Apaga a memória até a vítima não saber quem é.',
+      {c:'Dois Testes de Fome', dur:'Permanente', pool:'Determinação + Dominação', vs:'Autocontrole + Determinação', f:'Sabá'}),
+    P(5,'Chamado de Lete','Lethe’s Call','Apaga semanas de memória. Exige Nublar a Memória ou A Mente Esquecida.',
+      {c:'Um Teste de Fome', dur:'Indefinida', pool:'Manipulação + Dominação', vs:'Inteligência + Determinação', f:'Guerra da Gehenna'})
+  ],
+  'Fortitude': [
+    P(2,'Obstinado','Obdurate','Mantém o pé firme contra impactos enormes.',
+      {am:'Potência 2', c:'Um Teste de Fome', dur:'Uma cena', pool:'Raciocínio + Sobrevivência', f:'Winter’s Teeth'}),
+    P(2,'Autoconfiança','Self-Assurance','Absorve dano de Força de Vontade em combate social.',
+      {ex:'Mente Inabalável', c:'Um Teste de Fome', dur:'Uma cena ou até esgotar', f:'Succubus Club'}),
+    P(3,'Selar a Boca da Besta','Seal the Beast’s Maw','Ignora a Fome por uma cena, ao custo de dados.',
+      {c:'Dois Testes de Fome', dur:'Uma cena', f:'Religiões Proibidas'}),
+    P(3,'Alma Calejada','Calloused Soul','Aceita Máculas antes da hora para se blindar contra as próximas.',
+      {c:'Duas Máculas', dur:'Uma noite', f:'Fachada Esfarrapada'}),
+    P(5,'Escudos de Carne','Meat Shields','Mortais frágeis por perto reforçam sua Fortitude.',
+      {c:'Um Teste de Fome', dur:'Uma cena ou até se afastar deles', f:'Fachada Esfarrapada'})
+  ],
+  'Ofuscação': [
+    P(1,'Encobrir','Ensconce','Objetos pequenos no corpo passam despercebidos.',
+      {c:'Livre', dur:'Uma cena', f:'Guerra da Gehenna'}),
+    P(1,'Máscara das Eras','Mask of Ages','Parece mais velho ou mais jovem.',
+      {c:'Um Teste de Fome', dur:'Até o amanhecer', f:'Succubus Club'}),
+    P(2,'Esconderijo','Cache','Esconde objetos que você não está segurando.',
+      {ex:'Encobrir', c:'Um Teste de Fome', dur:'Uma cena ou até o amanhecer', f:'Guerra da Gehenna'}),
+    P(2,'Passagem do Fantasma','Ghost’s Passing','Apaga o rastro de um animal.',
+      {am:'Animalismo 1', c:'Um Teste de Fome', dur:'Uma sessão', f:'Religiões Proibidas'}),
+    P(2,'Conversa Dupla','Doubletalk','Diz uma coisa e passa outra, em segredo.',
+      {am:'Auspícios 1', c:'Um Teste de Fome', dur:'Uma fala', pool:'Autocontrole + Ofuscação', vs:'Raciocínio + Auspícios', f:'Amor Manchado'}),
+    P(3,'Máscara do Isolamento','Mask of Isolation','Ninguém reconhece a vítima.',
+      {am:'Dominação 1', ex:'Máscara de Mil Faces', c:'Um Teste de Fome', dur:'Uma noite, mais uma por ponto de margem', pool:'Manipulação + Ofuscação', vs:'Carisma + Intuição', f:'Sabá'}),
+    P(3,'Disfarce do Falecido','Guise of the Departed','Copia um mortal morto há pouco.',
+      {am:'Oblívio 1', c:'Um Teste de Fome', dur:'Até o amanhecer', pool:'Raciocínio + Ofuscação', f:'Fachada Esfarrapada'}),
+    P(4,'Reclusão','Seclusion','A vítima deixa de ver e ouvir qualquer ser.',
+      {am:'Dominação 1', c:'Um Teste de Fome', dur:'Margem em cenas ou noites', pool:'Manipulação + Ofuscação', vs:'Determinação + Prontidão', f:'Fachada Esfarrapada'})
+  ],
+  'Potência': [
+    P(3,'Exuberância','Exuberance','Potência conta dois níveis acima, com risco.',
+      {c:'Livre', dur:'Passiva', f:'Fachada Esfarrapada'})
+  ],
+  'Presença': [
+    P(2,'Isca do Predador','Predator’s Lure','O alvo sente uma curiosidade irresistível e vem até você.',
+      {c:'Um Teste de Fome', dur:'Uma cena ou até chegar a 3 metros', pool:'Carisma + Liderança', vs:'Autocontrole + Determinação', f:'Cortes dos Condenados'}),
+    P(3,'Limpar o Campo','Clear the Field','Esvazia o lugar, com calma e em ordem.',
+      {am:'Dominação 3', c:'Um Teste de Fome', pool:'Autocontrole + Presença', vs:'Raciocínio + Autocontrole', f:'Queda de Londres', errata:1}),
+    P(3,'Sanguessuga de Paixão','Passion Leech','Suga a paixão de um mortal e vive como se tivesse Humanidade 10.',
+      {am:'Auspícios 2', c:'Um Teste de Fome', dur:'Até o amanhecer; três noites para a vítima', pool:'Autocontrole + Auspícios', f:'Fachada Esfarrapada'}),
+    P(3,'Exibição Revigorante','Invigorating Display','Inala a energia de uma multidão.',
+      {ex:'Deslumbrar', c:'Um Teste de Fome', dur:'Uma cena', pool:'Autocontrole + Presença', f:'Succubus Club'}),
+    P(4,'Inflamar o Desejo','Inflame Desire','O desejo do momento vira obsessão.',
+      {am:'Ofuscação 1', c:'Um Teste de Fome', dur:'Uma cena', pool:'Manipulação + Presença', vs:'Autocontrole + Determinação', f:'Fachada Esfarrapada'}),
+    P(4,'Magnum Opus','Magnum Opus','Impregna Presença numa obra de arte.',
+      {am:'Auspícios 3', c:'Um ou mais Testes de Fome', pool:'Carisma ou Manipulação + Ofícios', f:'Winter’s Teeth'}),
+    P(4,'Parceiro','Wingman','Empresta um poder de Presença a outra pessoa.',
+      {c:'Um Teste de Fome, mais o do poder', dur:'Como o poder usado', f:'Amor Manchado'})
+  ],
+  'Proteanismo': [
+    P(1,'Contorcer','Squirm','Passa por frestas impossíveis.',
+      {c:'Livre, ou um Teste de Fome', dur:'Enquanto quiser', f:'Fachada Esfarrapada'}),
+    P(2,'O Beijo da Serpente','Serpent’s Kiss','Injeta o próprio vitae ao morder.',
+      {c:'Um Teste de Fome', dur:'Uma cena', f:'Amor Manchado'}),
+    P(2,'O Gole Falso','The False Sip','Bebe sem que o sangue entre no corpo.',
+      {am:'Fortitude 1', c:'Um Teste de Fome', dur:'Uma cena ou mais', f:'Amor Manchado'}),
+    P(3,'Absorção Visceral','Visceral Absorption','Absorve corpos e sangue, limpando a cena.',
+      {am:'Feitiçaria de Sangue 2', c:'Um Teste de Fome', dur:'Um turno por corpo', pool:'Força + Proteanismo', f:'Sabá'}),
+    P(3,'Máscara da Morte','Masque of Death','Vira um cadáver aparente.',
+      {am:'Oblívio 2', c:'Um Teste de Fome', dur:'Até encerrar ou o amanhecer', f:'Succubus Club'}),
+    P(5,'Forma de Sangue','Blood Form','Vira uma massa de sangue.',
+      {am:'Feitiçaria de Sangue 2', c:'Um Teste de Fome', dur:'Uma cena', f:'Guerra da Gehenna'}),
+    P(5,'Mestre das Formas','Master of Forms','Qualquer forma animal.',
+      {ex:'Metamorfose', c:'O Teste de Fome da Metamorfose', dur:'Como a Metamorfose', f:'Guerra da Gehenna'}),
+    P(5,'Enxame','Swarm','Vira um enxame.',
+      {ex:'Metamorfose', c:'Dois Testes de Fome', dur:'Uma cena', f:'Fachada Esfarrapada'}),
+    P(5,'Rosto da Vítima','Face of the Victim','Assume o rosto de quem acabou de beber.',
+      {ex:'Vicissitude', c:'Um Teste de Fome', dur:'Até Fome 5 ou usar de novo', f:'Succubus Club'})
+  ],
+  'Feitiçaria de Sangue': [
+    P(1,'Moldar o Sacramento Sanguíneo','Shape the Sanguine Sacrament','Dá forma e imagem ao sangue.',
+      {c:'Livre, ou um Teste de Fome com o seu sangue', dur:'Uma cena', pool:'Manipulação + Feitiçaria de Sangue', f:'Fachada Esfarrapada'}),
+    P(2,'Maldição do Sangue','Blood’s Curse','Agrava a perdição de outro vampiro.',
+      {c:'Um Teste de Fome', dur:'Até o amanhecer', pool:'Inteligência + Feitiçaria de Sangue', vs:'Vigor + Ocultismo ou Fortitude', f:'Guerra da Gehenna'}),
+    P(2,'Vinculum Magnum','Vinculum Magnum','Mantém mais Laços de Sangue.',
+      {c:'Livre', dur:'Passiva', f:'Cortes dos Condenados'}),
+    P(3,'Laço Transitivo','Transitive Bond','O Laço passa adiante pelo sangue.',
+      {c:'Um Teste de Fome', f:'Sabá'}),
+    P(3,'Ondas do Coração','Ripples of the Heart','Muda a Ressonância de um mortal.',
+      {c:'Um Teste de Fome', f:'Amor Manchado'}),
+    P(4,'Vitae Fulminante','Fulminating Vitae','Uma bomba de vitae.',
+      {c:'Dois Testes de Fome', dur:'Até o amanhecer', pool:'Vigor + Feitiçaria de Sangue', vs:'Raciocínio + Atletismo', f:'Fachada Esfarrapada'}),
+    P(4,'Marionete','Marionette','Move um corpo pelo sangue dentro dele.',
+      {ex:'Moldar o Sacramento Sanguíneo', c:'Um ou mais Testes de Fome', dur:'Um turno por ponto de margem', pool:'Manipulação + Feitiçaria de Sangue', vs:'Vigor + Ocultismo ou Fortitude', f:'Fachada Esfarrapada'}),
+    P(5,'Recuperação de Vitae','Reclamation of Vitae','Toma de volta o sangue dos seus carniçais.',
+      {c:'Uma ou mais Máculas', f:'Sabá'})
+  ],
+  'Oblívio': [
+    P(2,'Predição Fatal','Fatal Prediction','Atrai acidentes para um mortal.',
+      {am:'Auspícios 2', c:'Um Teste de Fome', dur:'24 horas', pool:'Determinação + Oblívio', vs:'Raciocínio + Ocultismo', f:'Guia do Jogador'}),
+    P(4,'Profanar o Santificado','Profane the Sanctified','Anula a Fé Verdadeira e corrói o sagrado.',
+      {c:'Um Teste de Fome', dur:'Um turno; permanente em símbolos', pool:'Determinação + Oblívio', vs:'Força de Vontade', f:'Fachada Esfarrapada'}),
+    P(4,'Agarre Umbroso','Umbrous Clutch','Puxa a vítima pela própria sombra.',
+      {c:'Um Teste de Fome e uma Mácula', dur:'Instantânea', pool:'Raciocínio + Oblívio', vs:'Destreza + Raciocínio', f:'Sabá'}),
+    P(5,'A Escuridão Interior','The Darkness Within','Desperta na vítima uma entidade que a destrói.',
+      {c:'Dois Testes de Fome', dur:'Uma cena', pool:'Manipulação + Oblívio', vs:'Autocontrole + Determinação', f:'Fachada Esfarrapada'})
+  ]
+};
+Object.keys(PODERES_EXTRA).forEach(d => {
+  const lista = DISCIPLINAS[d].poderes;
+  PODERES_EXTRA[d].forEach(p => { if (!lista.some(x => x.pt === p.pt)) lista.push(p); });
+  lista.sort((a, b) => a.lv - b.lv);   // sort estável: dentro do nível, a ordem antiga fica
+});
 
 const LISTA_DISCIPLINAS = Object.keys(DISCIPLINAS);
 
