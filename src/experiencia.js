@@ -577,18 +577,19 @@ document.addEventListener('keydown', ev => {
 });
 function xpSaldoHtml() {
   const c = xpConta();
-  const partesGasto = [`compras ${c.compras}`].concat(c.avulso ? [`avulso ${c.avulso}`] : [], c.acerto ? [`acerto ${c.acerto}`] : [], c.maoGasto > 0 ? [`à mão ${c.maoGasto}`] : []);
+  /* a explicação sai do próprio número: compras pela tabela + o resto (o que foi
+     gasto fora da ficha ou ajustado à mão). Soma sempre o Gasto, sem alerta. */
+  const resto = c.gasto - c.compras;
+  const partesGasto = [`compras ${c.compras}`].concat(resto > 0 ? [`outros ${resto}`] : resto < 0 ? [`ajuste ${resto}`] : []);
   const partesGanho = [`no livro ${c.ganhoLivro}`].concat(c.maoGanho ? [`à mão ${c.maoGanho}`] : []);
   return `<div class="xp-saldo">
       <label class="disp${c.disp < 0 ? ' neg' : ''}"><span class="olho">Disponível</span>${campo('disp', c.disp)}<small>${c.disp < 0 ? 'gastou mais do que ganhou' : 'mudar aqui ajusta o ganho'}</small></label>
       <label><span class="olho">Ganho</span>${campo('ganho', c.total)}<small>${partesGanho.join(' · ')}</small></label>
       <label><span class="olho">Gasto</span>${campo('gasto', c.gasto)}<small>${partesGasto.join(' · ')}</small></label>
     </div>
-    ${c.gasto < c.piso && !aceito('xp-gasto') ? `<div class="xp-alerta"><p>O gasto (${c.gasto}) é menor que o que as compras registradas custaram${c.avulso > 0 ? ' mais o gasto avulso' : ''} (${c.piso}).</p>
-      <button type="button" class="btn sm primary" data-xp="acertar">Acertar o gasto para ${c.piso}</button>${botaoAceitar('xp-gasto')}</div>` : ''}
     ${c.disp < 0 && !aceito('xp-neg') ? `<div class="xp-alerta"><p>Faltam ${-c.disp} XP no ganho para cobrir o que foi gasto.</p>
       <button type="button" class="btn sm primary" data-xp="cobrir">Registrar ${-c.disp} XP ganho</button>${botaoAceitar('xp-neg')}</div>` : ''}
-    ${['xp-gasto', 'xp-neg'].some(aceito) ? `<p class="note xp-aceito">Contagem marcada como correta. <button type="button" class="lnk" data-act="desaceitar" data-sec="${aceito('xp-gasto') ? 'xp-gasto' : 'xp-neg'}">Conferir de novo</button></p>` : ''}`;
+    ${c.disp < 0 && aceito('xp-neg') ? `<p class="note xp-aceito">Contagem marcada como correta. <button type="button" class="lnk" data-act="desaceitar" data-sec="xp-neg">Conferir de novo</button></p>` : ''}`;
 }
 
 /* ---------- o diálogo ---------- */
