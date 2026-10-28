@@ -167,6 +167,15 @@ async def main():
         await pg.fill(c('gasto'), '6'); await pg.press(c('gasto'), 'Enter'); await pg.wait_for_timeout(150)
         ok(await pg.locator('#col-main .xp-alerta').count() == 1, 'se os números mudam, o aviso volta')
 
+        print('Compra registrada não gera pergunta sem sentido')
+        await pg.click('#aba-atributos'); await pg.wait_for_timeout(150)
+        await pg.evaluate("""() => { S.atr = {forca:2,destreza:4,vigor:2,carisma:1,manipulacao:4,autocontrole:3,inteligencia:3,raciocinio:3,determinacao:2};
+          S.xpTotal = 80; S.xpGasto = 35; S.xpLog = [];
+          S.xpCompras = [{tipo:'atr',k:'destreza',de:3,para:4,custo:20,rot:'Destreza 3 → 4',manual:true,em:new Date().toISOString()}]; render(); }""")
+        ok(await pg.locator('#col-main .xp-cria:visible').count() == 0, 'não pede "Foi na criação" quando isso não ajuda a fechar a criação')
+        st = await pg.inner_text('#col-main .cstatus:visible')
+        ok('Pronto' in st and 'equivalem' not in st, f'criação coberta e XP pago: só "Pronto" ({st.strip()[:60]})')
+
         print('Criação marcada como correta')
         await pg.click('#aba-atributos'); await pg.wait_for_timeout(150)
         await pg.evaluate("S.xpTotal = 0; S.xpGasto = 0; S.xpCompras = []; S.xpLog = []; render()")

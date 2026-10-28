@@ -566,7 +566,11 @@ function blocoXPCriacao(tipo, d) {
     const nd = diffDistrib(contagem(base, chaves), d.alvo);
     return nd.ok ? 'fecha a criação' : (erro(nd) < erro(d) ? 'ajuda a fechar' : '');
   };
-  const itens = ks.map(k => {
+  /* só oferece "Foi na criação" para as compras que, sendo da criação, fecham ou
+     melhoram a conta; se nenhuma ajuda, o quadro não aparece */
+  const uteis = tipo === 'disc' ? ks : ks.filter(k => ajuda(k));
+  if (!uteis.length) return '';
+  const itens = uteis.map(k => {
     const cs = comprasXP(tipo, k), custo = cs.reduce((t, c) => t + (Number(c.custo) || 0), 0);
     const a = atual(k), de = nivelCriacao(tipo, k, a), dica = ajuda(k);
     return `<li${dica ? ' class="ajuda"' : ''}><span><b>${esc(nome(k))} ${de} → ${a}</b> <small>${custo} XP${dica ? ' · <em>' + dica + '</em>' : ''}</small></span>
@@ -595,14 +599,16 @@ function statusDistrib(d, tipo) {
   const nomes = tipo === 'hab' ? ['Habilidade', 'Habilidades'] : ['Atributo', 'Atributos'];
   const xpBloco = tipo ? blocoXPCriacao(tipo, d) : '';
   if (d.ok) return statusCriacao('ok', '', medidorDistrib(d)) + xpBloco;
-  if (x && x.viavel) return statusCriacao(orcamentoXP().coberto ? 'ok' : 'under', textoXP(x.xp)
-    + (tipo === 'hab' && x.distrib !== S.distribHab ? ` (conta feita como ${DISTRIB_HABILIDADES[x.distrib].nome})` : ''), '', 'xp') + xpBloco;
+  /* criação coberta e o que passa dela já pago com XP: nada a dizer */
+  if (x && x.viavel && orcamentoXP().coberto) return statusCriacao('ok', '');
+  if (x && x.viavel) return statusCriacao('under', textoXP(x.xp)
+    + (tipo === 'hab' && x.distrib !== S.distribHab ? ` (conta feita como ${DISTRIB_HABILIDADES[x.distrib].nome})` : ''), '', 'xp');
   if (aceito(tipo)) return statusCriacao('under', 'x', '', tipo);
   return statusCriacao(d.nExcesso ? 'over' : 'under', (xpBloco ? 'Na criação: ' : '') + textoDistrib(d, nomes[0], nomes[1]), medidorDistrib(d), tipo) + xpBloco;
 }
 function statusPontos(atual, alvo, nome) {
   const st = estadoNum(atual, alvo);
-  if (st === 'over' && nome === 'Vantagens' && usaXP()) return statusCriacao(orcamentoXP().coberto ? 'ok' : 'under', textoXP((atual - alvo) * 3), '', 'xp');
+  if (st === 'over' && nome === 'Vantagens' && usaXP()) return orcamentoXP().coberto ? statusCriacao('ok', '') : statusCriacao('under', textoXP((atual - alvo) * 3), '', 'xp');
   const txt = st === 'under' ? `Falta${alvo - atual > 1 ? 'm' : ''} ${alvo - atual} ponto${alvo - atual > 1 ? 's' : ''} de ${nome}: ${atual} de ${alvo} usados.`
                              : `${atual - alvo} ponto${atual - alvo > 1 ? 's' : ''} de ${nome} a mais: a criação dá ${alvo}, a ficha tem ${atual}.`;
   return statusCriacao(st, st === 'ok' ? '' : txt, '', nome === 'Vantagens' ? 'vant' : nome === 'Defeitos' ? 'def' : '');
@@ -627,7 +633,8 @@ function statusDisciplinas() {
   if (!partes.length) return statusCriacao('ok') + xpBloco;
   const certo = soXP && partes.length === 1 && orcamentoXP().coberto;
   const txt = partes.join('; ');
-  return statusCriacao(certo ? 'ok' : 'under', soXP ? txt : txt.charAt(0).toUpperCase() + txt.slice(1) + '.', '', soXP ? 'xp' : 'disc') + (aceito('disc') ? '' : xpBloco);
+  if (certo) return statusCriacao('ok', '') + (aceito('disc') ? '' : xpBloco);
+  return statusCriacao('under', soXP ? txt : txt.charAt(0).toUpperCase() + txt.slice(1) + '.', '', soXP ? 'xp' : 'disc') + (aceito('disc') ? '' : xpBloco);
 }
 function estadoNum(atual, alvo) { return atual === alvo ? 'ok' : (atual > alvo ? 'over' : 'under'); }
 
