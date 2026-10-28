@@ -25,7 +25,7 @@ function novoEstado() {
     saude: { sup:0, agg:0 }, vontade: { sup:0, agg:0 },
     danoMetade: true, registroMesa: [], notasPoder: {},
     bpOverride: null, distribHab: 'balanceado',
-    xpTotal: 0, xpGasto: 0, xpLog: [],
+    xpTotal: 0, xpGasto: 0, xpLog: [], aceitos: {},
     /* Caçador: A Revanche */
     credo: '', impeto: '', org: '', trunfos: [], desespero: 0, perigo: 0,
     mar: '', xpCompras: [], loresheet: '',
@@ -495,27 +495,50 @@ function orcamentoXP() {
 function blocoXP(compacto) {
   const x = orcamentoXP();
   if (!x.implicito) return '';
-  if (x.semRegistro) return compacto ? '' : `<div class="xp-impl" data-estado="under">
+  if (x.semRegistro) return compacto || aceito('xp') ? '' : `<div class="xp-impl" data-estado="under">
     <p><span class="pip under" aria-hidden="true"></span>A ficha tem pontos acima da criação (<strong>${x.implicito} XP</strong> pela tabela do livro) e nenhuma experiência registrada, por isso eles aparecem como erro nas abas. Se vieram de experiência, registre:</p>
-    <button type="button" class="btn sm" data-act="xp-implicito">Registrar ${x.faltaXP} XP (total e gasto)</button>
+    <button type="button" class="btn sm" data-act="xp-implicito">Registrar ${x.faltaXP} XP (total e gasto)</button> ${botaoAceitar('xp')}
   </div>`;
-  /* coberto: não há nada a decidir, o quadro some */
-  if (x.coberto) return '';
+  /* coberto, ou confirmado pela mesa: não há nada a decidir, o quadro some */
+  if (x.coberto || aceito('xp')) return '';
   const lista = x.partes.map(([t, v]) => `${t} ${v}`).join(' · ');
   const semTotal = (Number(S.xpTotal) || 0) < (x.registrado + x.implicito);
   return `<div class="xp-impl" data-estado="${x.coberto ? 'ok' : 'under'}">
     <p><span class="pip ${x.coberto ? 'ok' : 'under'}" aria-hidden="true"></span><strong>${x.implicito} XP</strong> em pontos acima da criação${compacto ? '' : ` <span class="note">(${esc(lista)})</span>`}.
     ${x.coberto ? 'Cabem no XP gasto.' : `${x.livre ? `Só ${x.livre} estão no XP gasto.` : 'Ainda não estão no XP gasto, por isso aparecem como disponíveis.'}`}</p>
-    ${x.coberto ? '' : `<button type="button" class="btn sm" data-act="xp-implicito">${semTotal ? `Registrar ${x.faltaXP} XP (total e gasto)` : `Contar ${x.faltaXP} XP como gastos`}</button>`}
+    ${x.coberto ? '' : `<button type="button" class="btn sm" data-act="xp-implicito">${semTotal ? `Registrar ${x.faltaXP} XP (total e gasto)` : `Contar ${x.faltaXP} XP como gastos`}</button> ${botaoAceitar('xp')}`}
   </div>`;
 }
 
 /* linha de instrução ao vivo no topo de cada quadro da criação:
    diz o que ainda falta, em vez de só repetir a regra */
-function statusCriacao(estado, texto, antes) {
+/* "A contagem está correta": a mesa confirma um aviso e ele some.
+   A confirmação fica presa aos números daquela parte (a assinatura):
+   se eles mudarem depois, o aviso volta. */
+function assinaturaSec(sec) {
+  try {
+    const o = orcamento();
+    if (sec === 'atr') return JSON.stringify(o.atr.atual);
+    if (sec === 'hab') return JSON.stringify([o.hab.atual, S.distribHab]);
+    if (sec === 'disc') return JSON.stringify([o.disc.atual, o.disc.alvo, o.disc.avisos, o.disc.foraDoCla]);
+    if (sec === 'vant') return o.vant.atual + '/' + o.vant.alvo;
+    if (sec === 'def') return o.def.atual + '/' + o.def.alvo;
+    if (sec === 'xp') { const x = orcamentoXP(); return x.implicito + '/' + x.livre; }
+    if (typeof xpConta === 'function') {
+      const c = xpConta();
+      if (sec === 'xp-gasto') return c.gasto + '/' + c.piso;
+      if (sec === 'xp-neg') return c.total + '/' + c.gasto;
+    }
+  } catch (e) {}
+  return '';
+}
+const aceito = sec => !!(sec && S.aceitos && S.aceitos[sec] && S.aceitos[sec] === assinaturaSec(sec));
+const botaoAceitar = sec => `<button type="button" class="btn sm ghost aceitar" data-act="aceitar" data-sec="${sec}" title="Some com o aviso enquanto estes números não mudarem">A contagem está correta</button>`;
+function statusCriacao(estado, texto, antes, sec) {
   if (!criacaoConferida()) return '';
   const ok = estado === 'ok' && !texto;
-  return `<div class="cstatus" data-estado="${estado}" role="status">${antes || ''}<p><span class="pip ${estado}" aria-hidden="true"></span>${ok ? 'Pronto para a criação.' : esc(texto)}</p></div>`;
+  if (!ok && aceito(sec)) return `<div class="cstatus" data-estado="aceito" role="status"><p><span class="pip ok" aria-hidden="true"></span>Marcado como correto. <button type="button" class="lnk" data-act="desaceitar" data-sec="${sec}">Conferir de novo</button></p></div>`;
+  return `<div class="cstatus" data-estado="${estado}" role="status">${antes || ''}<p><span class="pip ${estado}" aria-hidden="true"></span>${ok ? 'Pronto para a criação.' : esc(texto)}</p>${!ok && sec && estado !== 'ok' ? botaoAceitar(sec) : ''}</div>`;
 }
 /* "criação + experiência": pontos a mais viram XP; só o que falta é aviso */
 function textoXP(xp) {
@@ -531,8 +554,8 @@ function blocoXPCriacao(tipo, d) {
   const atual = k => tipo === 'atr' ? (S.atr[k] || 1) : tipo === 'hab' ? (S.hab[k] || 0) : ((S.disc.find(x => x.nome === k) || {}).nivel || 0);
   const nome = k => tipo === 'atr' ? xpRotAtrApp(k) : tipo === 'hab' ? rotuloHab(k) : k;
   const aberto = d && !d.ok;
-  /* criação fechada: os pontos dourados bastam, o quadro some */
-  if (!aberto) return '';
+  /* criação fechada, ou confirmada como está: os pontos dourados bastam, o quadro some */
+  if (!aberto || aceito(tipo)) return '';
   /* quais compras, se fossem da criação, fecham ou melhoram a conta */
   const erro = x => x ? x.nFalta + x.nExcesso : 0;
   const ajuda = k => {
@@ -573,15 +596,16 @@ function statusDistrib(d, tipo) {
   const xpBloco = tipo ? blocoXPCriacao(tipo, d) : '';
   if (d.ok) return statusCriacao('ok', '', medidorDistrib(d)) + xpBloco;
   if (x && x.viavel) return statusCriacao(orcamentoXP().coberto ? 'ok' : 'under', textoXP(x.xp)
-    + (tipo === 'hab' && x.distrib !== S.distribHab ? ` (conta feita como ${DISTRIB_HABILIDADES[x.distrib].nome})` : '')) + xpBloco;
-  return statusCriacao(d.nExcesso ? 'over' : 'under', (xpBloco ? 'Na criação: ' : '') + textoDistrib(d, nomes[0], nomes[1]), medidorDistrib(d)) + xpBloco;
+    + (tipo === 'hab' && x.distrib !== S.distribHab ? ` (conta feita como ${DISTRIB_HABILIDADES[x.distrib].nome})` : ''), '', 'xp') + xpBloco;
+  if (aceito(tipo)) return statusCriacao('under', 'x', '', tipo);
+  return statusCriacao(d.nExcesso ? 'over' : 'under', (xpBloco ? 'Na criação: ' : '') + textoDistrib(d, nomes[0], nomes[1]), medidorDistrib(d), tipo) + xpBloco;
 }
 function statusPontos(atual, alvo, nome) {
   const st = estadoNum(atual, alvo);
-  if (st === 'over' && nome === 'Vantagens' && usaXP()) return statusCriacao(orcamentoXP().coberto ? 'ok' : 'under', textoXP((atual - alvo) * 3));
+  if (st === 'over' && nome === 'Vantagens' && usaXP()) return statusCriacao(orcamentoXP().coberto ? 'ok' : 'under', textoXP((atual - alvo) * 3), '', 'xp');
   const txt = st === 'under' ? `Falta${alvo - atual > 1 ? 'm' : ''} ${alvo - atual} ponto${alvo - atual > 1 ? 's' : ''} de ${nome}: ${atual} de ${alvo} usados.`
                              : `${atual - alvo} ponto${atual - alvo > 1 ? 's' : ''} de ${nome} a mais: a criação dá ${alvo}, a ficha tem ${atual}.`;
-  return statusCriacao(st, st === 'ok' ? '' : txt);
+  return statusCriacao(st, st === 'ok' ? '' : txt, '', nome === 'Vantagens' ? 'vant' : nome === 'Defeitos' ? 'def' : '');
 }
 
 function statusDisciplinas() {
@@ -603,7 +627,7 @@ function statusDisciplinas() {
   if (!partes.length) return statusCriacao('ok') + xpBloco;
   const certo = soXP && partes.length === 1 && orcamentoXP().coberto;
   const txt = partes.join('; ');
-  return statusCriacao(certo ? 'ok' : 'under', soXP ? txt : txt.charAt(0).toUpperCase() + txt.slice(1) + '.') + xpBloco;
+  return statusCriacao(certo ? 'ok' : 'under', soXP ? txt : txt.charAt(0).toUpperCase() + txt.slice(1) + '.', '', soXP ? 'xp' : 'disc') + (aceito('disc') ? '' : xpBloco);
 }
 function estadoNum(atual, alvo) { return atual === alvo ? 'ok' : (atual > alvo ? 'over' : 'under'); }
 
@@ -2471,6 +2495,15 @@ document.addEventListener('click', (ev) => {
 
   const act = t.dataset.act;
   if (act === 'xp-para-criacao') return xpParaCriacao(t.dataset.tipo, t.dataset.k);
+  if (act === 'aceitar' || act === 'desaceitar') {
+    const sec = t.dataset.sec;
+    S.aceitos = Object.assign({}, S.aceitos);
+    if (act === 'aceitar') S.aceitos[sec] = assinaturaSec(sec); else delete S.aceitos[sec];
+    render();
+    if (typeof xpRedesenhar === 'function') xpRedesenhar();
+    if (act === 'aceitar' && typeof uiAviso === 'function') uiAviso('Marcado como correto. Se esses números mudarem, o aviso volta.', { rotulo: 'Desfazer', fn: () => { histDesfazer(); if (typeof xpRedesenhar === 'function') xpRedesenhar(); } }, { grupo: 'xp' });
+    return;
+  }
   if (act === 'dano-qtd') {
     const n = t.dataset.trilha;
     MESA.qtd[n] = Math.max(1, Math.min(10, (MESA.qtd[n] || 1) + Number(t.dataset.d)));

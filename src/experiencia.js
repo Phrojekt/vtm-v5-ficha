@@ -103,7 +103,6 @@ function evoConfirmar() {
   const a = evoAlvo(p.path);
   if (!a) { EVO.pend = null; return render(); }
   if (p.modo === 'comprar') {
-    if (p.custo > xpDisponivel()) return;
     const em = new Date().toISOString();
     const novas = [];
     for (let n = p.de + 1; n <= p.para; n++) {
@@ -176,7 +175,7 @@ function evoBarra() {
     const aberta = a && criacaoConferida() && (a.tipo === 'disc' ? o.disc.atual < o.disc.alvo : !o[a.tipo].ok);
     meio = `<b>${esc(p.rot)} ${p.de} → ${p.para}</b><span>${p.custo} XP${falta > 0 ? ` · <em>faltam ${falta}</em>` : ` · sobram ${disp - p.custo}`}</span>${aberta
       ? `<span class="evo-alerta">A criação de ${a.tipo === 'atr' ? 'Atributos' : a.tipo === 'hab' ? 'Habilidades' : 'Disciplinas'} ainda não fechou: este ponto vai contar como XP, não como criação. Para distribuir a criação, saia do Evoluir.</span>` : ''}`;
-    acoes = `<button type="button" class="btn primary" id="evo-ok" data-evo="ok"${falta > 0 ? ' disabled' : ''}>Comprar</button><button type="button" class="btn ghost" data-evo="cancelar">Cancelar</button>`;
+    acoes = `<button type="button" class="btn${falta > 0 ? '' : ' primary'}" id="evo-ok" data-evo="ok">${falta > 0 ? 'Comprar assim mesmo' : 'Comprar'}</button><button type="button" class="btn ghost" data-evo="cancelar">Cancelar</button>`;
   } else if (p && p.modo === 'devolver') {
     meio = `<b>Devolver ${esc(p.rot)} ${p.de} → ${p.para}</b><span>+${p.custo} XP de volta</span>`;
     acoes = `<button type="button" class="btn primary" id="evo-ok" data-evo="ok">Devolver</button><button type="button" class="btn ghost" data-evo="cancelar">Cancelar</button>`;
@@ -251,13 +250,17 @@ function contaCobrar(c, fechadaAntes) {
   const nome = c.rotCurto || passos.map(x => x.rot).join(', ');
   if (custo > disp) {
     const falta = custo - disp;
-    avisoXP(`${nome} custa ${custo} XP pela tabela e há ${disp} disponíve${disp === 1 ? 'l' : 'is'}. Nada mudou.`,
-      { rotulo: `Registrar ${falta} XP e comprar`, fn: () => {
-        S.xpLog = (S.xpLog || []).concat([{ em: new Date().toISOString(), xp: falta, nota: `Registrado para comprar ${nome}`, tipo: 'ganho' }]);
-        S.xpTotal = (Number(S.xpTotal) || 0) + falta;
-        contaCobrar(c, true);
-      } }, 12000);
-    return true;
+    if (!c.forcar) {
+      avisoXP(`${nome} custa ${custo} XP pela tabela e há ${disp} disponíve${disp === 1 ? 'l' : 'is'}. Nada mudou ainda.`, [
+        { rotulo: `Registrar ${falta} XP e comprar`, fn: () => {
+          S.xpLog = (S.xpLog || []).concat([{ em: new Date().toISOString(), xp: falta, nota: `Registrado para comprar ${nome}`, tipo: 'ganho' }]);
+          S.xpTotal = (Number(S.xpTotal) || 0) + falta;
+          contaCobrar(c, true);
+        } },
+        { rotulo: 'Comprar assim mesmo', fn: () => contaCobrar(Object.assign({}, c, { forcar: true }), true) }
+      ], 14000);
+      return true;
+    }
   }
   c.aplicar();
   const em = new Date().toISOString();
@@ -421,7 +424,8 @@ const XP_MOV = {
   ganho:    { rot: 'Ganhar',              txt: 'Experiência da sessão',          total: +1, gasto: 0,  sinal: '+' },
   retirada: { rot: 'Tirar',               txt: 'XP retirado',                    total: -1, gasto: 0,  sinal: '−' },
   gasto:    { rot: 'Disponível → gasto',  txt: 'Gasto fora da ficha',            total: 0,  gasto: +1, sinal: '−' },
-  volta:    { rot: 'Gasto → disponível',  txt: 'Gasto que voltou ao disponível', total: 0,  gasto: -1, sinal: '+' }
+  volta:    { rot: 'Gasto → disponível',  txt: 'Gasto que voltou ao disponível', total: 0,  gasto: -1, sinal: '+' },
+  acerto:   { rot: 'Acerto do gasto',     txt: 'Acerto do gasto',                total: 0,  gasto: +1, sinal: '−' }
 };
 const tipoMov = g => XP_MOV[g && g.tipo] ? g.tipo : 'ganho';
 /* XP gasto que não está preso a nenhuma compra registrada: só esse pode voltar */
@@ -445,20 +449,16 @@ function xpMover(tipo, n, nota) {
   n = Math.round(Number(n) || 0);
   if (!m || n <= 0) return avisoXP('Escolha uma quantidade de XP maior que zero.');
   const disp = xpDisponivel();
-  if ((tipo === 'retirada' || tipo === 'gasto') && n > disp)
-    return avisoXP(disp > 0 ? `Só há ${disp} XP disponíve${disp > 1 ? 'is' : 'l'}.` : 'Não há XP disponível.');
-  if (tipo === 'volta') {
-    const solto = xpGastoSolto();
-    if (n > solto) return avisoXP(solto > 0
-      ? `Só ${solto} XP do gasto estão soltos. O resto está preso a compras: devolva pelo livro de experiência.`
-      : 'Todo o XP gasto está preso a compras. Para recuperar, devolva a compra no livro de experiência.');
-  }
+  /* passar do disponível ou do gasto solto não é barrado: o saldo avisa,
+     com "Acertar" e "A contagem está correta" */
+  const alem = ((tipo === 'retirada' || tipo === 'gasto') && n > disp) || (tipo === 'volta' && n > xpGastoSolto());
   S.xpLog = (S.xpLog || []).concat([{ em: new Date().toISOString(), xp: n, nota: nota || '', tipo }]);
   S.xpTotal = Math.max(0, (Number(S.xpTotal) || 0) + m.total * n);
   S.xpGasto = Math.max(0, (Number(S.xpGasto) || 0) + m.gasto * n);
   render(); xpRedesenhar();
+  const extra = alem ? ' A conta ficou fora do esperado: veja o saldo.' : '';
   const verbo = { ganho: `+${n} XP`, retirada: `−${n} XP`, gasto: `${n} XP passaram para gasto`, volta: `${n} XP voltaram ao disponível` }[tipo];
-  avisoXP(`${verbo}${nota ? ' (' + nota + ')' : ''}. Disponível agora: ${xpDisponivel()}.`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
+  avisoXP(`${verbo}${nota ? ' (' + nota + ')' : ''}. Disponível agora: ${xpDisponivel()}.${extra}`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
 }
 function xpApagarMov(i) {
   const g = (S.xpLog || [])[i];
@@ -482,9 +482,9 @@ function xpMovHtml(variante) {
     </div>
     <div class="xp-mov-b">
       ${b('ganho', '+ Ganhar', false, 'Soma ao XP ganho')}
-      ${b('retirada', '− Tirar', disp <= 0, disp > 0 ? 'Tira do XP ganho (só do disponível)' : 'Não há XP disponível')}
-      ${b('gasto', variante === 'mesa' ? '→ Gasto' : 'Disponível → gasto', disp <= 0, disp > 0 ? 'Marca como gasto sem escolher o que comprou' : 'Não há XP disponível')}
-      ${b('volta', variante === 'mesa' ? '← Disponível' : 'Gasto → disponível', solto <= 0, solto > 0 ? `Até ${solto} XP de gasto avulso podem voltar` : 'Todo o gasto está preso a compras: devolva pelo livro')}
+      ${b('retirada', '− Tirar', false, 'Tira do XP ganho')}
+      ${b('gasto', variante === 'mesa' ? '→ Gasto' : 'Disponível → gasto', false, 'Marca como gasto sem escolher o que comprou')}
+      ${b('volta', variante === 'mesa' ? '← Disponível' : 'Gasto → disponível', false, solto > 0 ? `${solto} XP de gasto avulso; o resto está em compras (devolva pelo livro)` : 'O gasto está todo em compras: o melhor é devolver pelo livro')}
     </div>
   </div>`;
 }
@@ -533,10 +533,12 @@ function xpConta() {
   const log = S.xpLog || [];
   const soma = tp => log.filter(g => tipoMov(g) === tp).reduce((t, g) => t + (Number(g.xp) || 0), 0);
   const compras = (S.xpCompras || []).reduce((t, c) => t + (Number(c.custo) || 0), 0);
-  const avulso = soma('gasto') - soma('volta');
+  const avulso = soma('gasto') - soma('volta'), acerto = soma('acerto');
   const ganhoLivro = soma('ganho') - soma('retirada');
   const total = Number(S.xpTotal) || 0, gasto = Number(S.xpGasto) || 0;
-  return { total, gasto, disp: total - gasto, compras, avulso, maoGasto: gasto - compras - avulso, ganhoLivro, maoGanho: total - ganhoLivro };
+  /* o gasto deveria cobrir pelo menos o que as compras custaram (mais o avulso positivo) */
+  const piso = compras + Math.max(0, avulso);
+  return { total, gasto, disp: total - gasto, compras, avulso, acerto, maoGasto: gasto - compras - avulso - acerto, piso, ganhoLivro, maoGanho: total - ganhoLivro };
 }
 /* os três números do saldo são campos: editar entra no livro como movimento */
 const campo = (k, v) => `<input class="xp-campo" type="number" inputmode="numeric" data-xp-campo="${k}" value="${v}" aria-label="${{ disp: 'XP disponível', ganho: 'XP ganho', gasto: 'XP gasto' }[k]}"${k === 'disp' ? '' : ' min="0"'}>`;
@@ -554,12 +556,8 @@ function xpEditarCampo(k, v) {
     S.xpTotal = novo;
     msg = `Ganho ${c.total} → ${novo} (${d > 0 ? '+' : '−'}${Math.abs(d)} XP).`;
   } else {
-    const piso = c.gasto - xpGastoSolto();
-    const novo = Math.max(0, v);
-    if (novo < piso) {
-      render(); xpRedesenhar();
-      return avisoXP(`O gasto não pode ficar abaixo de ${piso}: é o que as compras registradas custaram. Para baixar mais, devolva compras no livro de experiência.`, null, 9000);
-    }
+        const novo = Math.max(0, v);
+    /* abaixo do que as compras custaram: grava assim mesmo; o saldo avisa e a mesa decide */
     const d = novo - c.gasto;
     if (!d) return render(), xpRedesenhar();
     reg(d > 0 ? 'gasto' : 'volta', Math.abs(d), `Gasto editado: ${c.gasto} → ${novo}`);
@@ -579,17 +577,18 @@ document.addEventListener('keydown', ev => {
 });
 function xpSaldoHtml() {
   const c = xpConta();
-  const partesGasto = [`compras ${c.compras}`].concat(c.avulso ? [`avulso ${c.avulso}`] : [], c.maoGasto > 0 ? [`à mão ${c.maoGasto}`] : []);
+  const partesGasto = [`compras ${c.compras}`].concat(c.avulso ? [`avulso ${c.avulso}`] : [], c.acerto ? [`acerto ${c.acerto}`] : [], c.maoGasto > 0 ? [`à mão ${c.maoGasto}`] : []);
   const partesGanho = [`no livro ${c.ganhoLivro}`].concat(c.maoGanho ? [`à mão ${c.maoGanho}`] : []);
   return `<div class="xp-saldo">
       <label class="disp${c.disp < 0 ? ' neg' : ''}"><span class="olho">Disponível</span>${campo('disp', c.disp)}<small>${c.disp < 0 ? 'gastou mais do que ganhou' : 'mudar aqui ajusta o ganho'}</small></label>
       <label><span class="olho">Ganho</span>${campo('ganho', c.total)}<small>${partesGanho.join(' · ')}</small></label>
       <label><span class="olho">Gasto</span>${campo('gasto', c.gasto)}<small>${partesGasto.join(' · ')}</small></label>
     </div>
-    ${c.maoGasto < 0 ? `<div class="xp-alerta"><p>O gasto anotado (${c.gasto}) é menor que o que a ficha registra em compras e gastos avulsos (${c.compras + c.avulso}).</p>
-      <button type="button" class="btn sm primary" data-xp="acertar">Acertar o gasto para ${c.compras + c.avulso}</button></div>` : ''}
-    ${c.disp < 0 ? `<div class="xp-alerta"><p>Faltam ${-c.disp} XP no ganho para cobrir o que foi gasto.</p>
-      <button type="button" class="btn sm primary" data-xp="cobrir">Registrar ${-c.disp} XP ganho</button></div>` : ''}`;
+    ${c.gasto < c.piso && !aceito('xp-gasto') ? `<div class="xp-alerta"><p>O gasto (${c.gasto}) é menor que o que as compras registradas custaram${c.avulso > 0 ? ' mais o gasto avulso' : ''} (${c.piso}).</p>
+      <button type="button" class="btn sm primary" data-xp="acertar">Acertar o gasto para ${c.piso}</button>${botaoAceitar('xp-gasto')}</div>` : ''}
+    ${c.disp < 0 && !aceito('xp-neg') ? `<div class="xp-alerta"><p>Faltam ${-c.disp} XP no ganho para cobrir o que foi gasto.</p>
+      <button type="button" class="btn sm primary" data-xp="cobrir">Registrar ${-c.disp} XP ganho</button>${botaoAceitar('xp-neg')}</div>` : ''}
+    ${['xp-gasto', 'xp-neg'].some(aceito) ? `<p class="note xp-aceito">Contagem marcada como correta. <button type="button" class="lnk" data-act="desaceitar" data-sec="${aceito('xp-gasto') ? 'xp-gasto' : 'xp-neg'}">Conferir de novo</button></p>` : ''}`;
 }
 
 /* ---------- o diálogo ---------- */
@@ -629,7 +628,7 @@ function xpComprarHtml(disp) {
           <datalist id="xp-esp-sug">${sugestoesEsp(XP.espHab).map(x => `<option value="${esc(x)}">`).join('')}</datalist></div>
       </div>
       <div class="xp-fim"><p class="xp-msg${disp < 3 ? ' ruim' : ''}" role="status">${disp < 3 ? `Custa 3 XP — faltam ${3 - disp}.` : 'Custa 3 XP.'}</p>
-        <button type="button" class="btn primary" data-xp="esp"${pode ? '' : ' disabled'}>Comprar por 3 XP</button></div>`
+        <button type="button" class="btn primary" data-xp="esp"${comPontos.length ? '' : ' disabled'}>Comprar por 3 XP</button></div>`
       : '<p class="note" style="margin:0">Ponha pontos numa Habilidade antes de especializar.</p>';
   } else {
     const ops = xpOpcoes(XP.cat);
@@ -642,7 +641,7 @@ function xpComprarHtml(disp) {
         const falta = x.custo - disp;
         const motivo = x.bloqueio || (falta > 0 ? `faltam ${falta} XP` : '');
         return `<li${motivo ? ' class="nao"' : ''}><span class="xp-it"><b>${esc(x.rot)}</b>${x.nota ? `<small>${esc(x.nota)}</small>` : ''}${motivo ? `<small class="ruim">${esc(motivo)}</small>` : ''}</span>
-          <button type="button" class="btn sm${motivo ? '' : ' primary'}" data-xp="comprar" data-id="${esc(x.id)}"${motivo ? ' disabled' : ''} aria-label="Comprar ${esc(x.rot)} por ${x.custo} XP">${x.custo} XP</button></li>`;
+          <button type="button" class="btn sm${motivo ? '' : ' primary'}" data-xp="comprar" data-id="${esc(x.id)}"${x.bloqueio ? ' disabled' : ''} aria-label="Comprar ${esc(x.rot)} por ${x.custo} XP${falta > 0 ? ' (sem XP bastante)' : ''}">${x.custo} XP</button></li>`;
       }).join('')}</ul>`).join('')}</div>`;
     }
   }
@@ -701,7 +700,7 @@ function xpComprar(id) {
   } else {
     op = xpOpcoes(XP.cat).find(x => x.id === id);
   }
-  if (!op || op.bloqueio || op.custo > disp) return;
+  if (!op || op.bloqueio) return;
   op.aplicar();
   S.xpCompras = (S.xpCompras || []).concat([Object.assign({}, op.compra, { custo: op.custo, rot: op.rot, manual: true, em: new Date().toISOString() })]);
   S.xpGasto = (Number(S.xpGasto) || 0) + op.custo;
@@ -744,8 +743,10 @@ document.addEventListener('click', ev => {
   if (a === 'devolver') return xpDevolver(Number(t.dataset.i));
   if (a === 'rm-mov') return xpApagarMov(Number(t.dataset.i));
   if (a === 'acertar') {
-    const c = xpConta();
-    S.xpGasto = c.compras + c.avulso;
+    const c = xpConta(), d = c.piso - c.gasto;
+    if (d <= 0) return;
+    S.xpLog = (S.xpLog || []).concat([{ em: new Date().toISOString(), xp: d, nota: `Acerto: o gasto volta a cobrir as compras (${c.gasto} → ${c.piso})`, tipo: 'acerto' }]);
+    S.xpGasto = c.piso;
     render(); xpRedesenhar();
     return avisoXP(`Gasto acertado para ${S.xpGasto} XP. Disponível: ${xpDisponivel()}.`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
   }

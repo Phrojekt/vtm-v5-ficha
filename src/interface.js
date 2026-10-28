@@ -30,7 +30,8 @@ function uiAviso(texto, acao, opts) {
   opts = opts || {};
   const ult = z.lastElementChild;
   if (ult && ult.dataset.t === texto) return;
-  const desfaz = !!(acao && acao.rotulo === 'Desfazer');
+  const acoes = Array.isArray(acao) ? acao : (acao ? [acao] : []);
+  const desfaz = acoes.some(a => a.rotulo === 'Desfazer');
   if (opts.grupo) z.querySelectorAll(`.aviso[data-grupo="${opts.grupo}"]`).forEach(a => a.remove());
   if (desfaz) z.querySelectorAll('.aviso[data-versao]').forEach(a => a.remove());
   const d = document.createElement('div');
@@ -38,12 +39,12 @@ function uiAviso(texto, acao, opts) {
   d.dataset.t = texto;
   if (opts.grupo) d.dataset.grupo = opts.grupo;
   if (desfaz && typeof HIST !== 'undefined') d.dataset.versao = HIST.versao;
-  d.innerHTML = `<p>${esc(texto)}</p>${acao ? `<button type="button" class="btn sm" data-aviso-acao style="opacity:1;font-size:13px;color:inherit;border-color:currentColor;background:transparent">${esc(acao.rotulo)}</button>` : ''}<button type="button" data-aviso-fechar aria-label="Fechar aviso">×</button>`;
+  d.innerHTML = `<p>${esc(texto)}</p>${acoes.map((a, i) => `<button type="button" class="btn sm" data-aviso-acao="${i}" style="opacity:1;font-size:13px;color:inherit;border-color:currentColor;background:transparent">${esc(a.rotulo)}</button>`).join('')}<button type="button" data-aviso-fechar aria-label="Fechar aviso">×</button>`;
   d.querySelector('[data-aviso-fechar]').onclick = () => d.remove();
-  if (acao) d.querySelector('[data-aviso-acao]').onclick = () => { d.remove(); acao.fn(); };
+  d.querySelectorAll('[data-aviso-acao]').forEach(b => { b.onclick = () => { d.remove(); acoes[Number(b.dataset.avisoAcao)].fn(); }; });
   z.appendChild(d);
   while (z.children.length > 3) z.firstElementChild.remove();
-  const dura = opts.dura || (Math.min(14000, 4500 + texto.length * 45) + (acao ? 4000 : 0));
+  const dura = opts.dura || (Math.min(14000, 4500 + texto.length * 45) + (acoes.length ? 4000 : 0));
   setTimeout(() => d.remove(), dura);
 }
 
@@ -518,17 +519,18 @@ function uiValidacao() {
   try {
     const o = orcamento(), x = orcamentoXP();
     /* pontos a mais que a experiência explica não são aviso; o XP fora do gasto é um só */
-    if (!o.atr.ok && !x.atr.viavel) avisos++;
-    if (!o.hab.ok && !x.hab.viavel) avisos++;
+    /* o que a mesa marcou como correto não conta como pendência */
+    if (!o.atr.ok && !x.atr.viavel && !aceito('atr')) avisos++;
+    if (!o.hab.ok && !x.hab.viavel && !aceito('hab')) avisos++;
     if (ehCacador()) { if (!trunfosUsados().ok) avisos++; }
-    else {
+    else if (!aceito('disc')) {
       const discXP = x.disc.julgavel && x.disc.viavel;
       if (o.disc.atual !== o.disc.alvo && !discXP) avisos++;
       avisos += o.disc.avisos.length + (o.disc.foraDoCla.length && !discXP ? 1 : 0);
-      if (o.vant.atual < o.vant.alvo) avisos++;
     }
-    if (o.def.atual !== o.def.alvo) avisos++;
-    if (!x.coberto) avisos++;
+    if (!ehCacador() && o.vant.atual < o.vant.alvo && !aceito('vant')) avisos++;
+    if (o.def.atual !== o.def.alvo && !aceito('def')) avisos++;
+    if (!x.coberto && !aceito('xp')) avisos++;
   } catch (e) {}
   b.dataset.estado = avisos ? 'aviso' : 'ok';
   b.textContent = avisos ? `Criação: ${avisos} pendência${avisos > 1 ? 's' : ''}` : 'Criação: tudo certo';
