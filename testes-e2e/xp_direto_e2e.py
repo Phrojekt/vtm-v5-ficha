@@ -142,6 +142,21 @@ async def main():
         ok(await pg.evaluate("S.xpTotal") == 10 and await pg.locator('#col-main [data-xp=cobrir]').count() == 0, 'disponível negativo: registrar o que falta, e o alerta some')
         ok(await pg.locator('#col-main .xp-impl').count() == 0, 'sem pendência de XP, o quadro de pendência não aparece')
 
+        print('Campos do saldo')
+        await pg.evaluate("S.xpTotal = 20; S.xpGasto = 10; S.xpLog = []; S.xpCompras = [{tipo:'atr',k:'forca',de:1,para:2,custo:8,rot:'x',manual:true,em:new Date().toISOString()}]; render()")
+        c = lambda k: f'#col-main [data-xp-campo={k}]'
+        await pg.fill(c('ganho'), '25'); await pg.press(c('ganho'), 'Enter'); await pg.wait_for_timeout(150)
+        ok(await pg.evaluate("[S.xpTotal, S.xpLog.at(-1).tipo, S.xpLog.at(-1).xp]") == [25, 'ganho', 5], 'Ganho 20 → 25 no campo entra no livro como +5')
+        await pg.fill(c('gasto'), '12'); await pg.press(c('gasto'), 'Enter'); await pg.wait_for_timeout(150)
+        ok(await pg.evaluate("[S.xpGasto, S.xpLog.at(-1).tipo, S.xpLog.at(-1).xp]") == [12, 'gasto', 2], 'Gasto 10 → 12 entra como gasto avulso de 2')
+        await pg.fill(c('gasto'), '5'); await pg.press(c('gasto'), 'Enter'); await pg.wait_for_timeout(150)
+        ok(await pg.evaluate("S.xpGasto") == 12 and await pg.input_value(c('gasto')) == '12', 'gasto abaixo das compras (8) é recusado e o campo volta')
+        await pg.fill(c('gasto'), '9'); await pg.press(c('gasto'), 'Enter'); await pg.wait_for_timeout(150)
+        ok(await pg.evaluate("[S.xpGasto, S.xpLog.at(-1).tipo]") == [9, 'volta'], 'Gasto 12 → 9 volta 3 ao disponível')
+        await pg.fill(c('disp'), '20'); await pg.press(c('disp'), 'Enter'); await pg.wait_for_timeout(150)
+        ok(await pg.evaluate("[S.xpTotal, S.xpGasto, xpDisponivel()]") == [29, 9, 20], 'Disponível 16 → 20 ajusta o ganho em +4')
+        ok('editado' in await pg.evaluate("S.xpLog.at(-1).nota"), 'a nota diz que foi editado à mão')
+
         ok(not errs, 'sem erros de JS ' + str(errs[:2]))
         await b.close()
     print('\nTUDO OK' if not falhas else f'\nFALHAS: {falhas}')

@@ -724,6 +724,13 @@ dialog.dlg-largo{width:min(760px, calc(100vw - 24px))}
 .xp-saldo > div{border:1px solid var(--line); border-radius:8px; padding:8px 12px; background:var(--ground)}
 .xp-saldo b{display:block; font-family:var(--f-disp); font-weight:600; font-size:24px; line-height:1.1}
 .xp-saldo .disp{border-color:var(--blood)} .xp-saldo .disp b{color:var(--blood-ink)}
+.xp-saldo > label{display:block; cursor:text; border:1px solid var(--line); border-radius:8px; padding:8px 12px; background:var(--ground)}
+.xp-campo{display:block; width:100%; border:0; border-bottom:1px dashed var(--line-2); background:transparent; padding:0; margin:2px 0; font:600 24px/1.1 var(--f-disp); color:inherit; font-variant-numeric:lining-nums tabular-nums; -moz-appearance:textfield}
+.xp-campo::-webkit-inner-spin-button, .xp-campo::-webkit-outer-spin-button{-webkit-appearance:none; margin:0}
+.xp-campo:focus{outline:none; border-bottom:2px solid var(--blood)}
+.xp-saldo .disp .xp-campo{color:var(--blood-ink)}
+.xp-saldo .disp.neg .xp-campo{color:var(--bad)}
+@media (max-width:520px){ .xp-campo{font-size:20px} }
 .xp-saldo small{display:block; font-size:12px; color:var(--ink-3); line-height:1.3; margin-top:2px}
 .xp-saldo .disp.neg{border-color:var(--bad); background:color-mix(in srgb, var(--bad) 8%, var(--ground))}
 .xp-saldo .disp.neg b{color:var(--bad)}

@@ -1163,13 +1163,7 @@ function blocoExperiencia() {
       ${ultimo ? `<p class="note xp-ultimo">Último registro: ${esc(ultimo.txt)} (${ultimo.sinal}${ultimo.n} XP${ultimo.em ? ', ' + esc(xpData(ultimo.em)) : ''}).</p>` : ''}
     </div>
     ${blocoXP(false)}
-    <details class="xp-manual">
-      <summary>Ajustar total e gasto à mão <span class="note">para fichas trazidas de outro lugar</span></summary>
-      <div class="fields c2">
-        <div><label class="lbl" for="f-xpt">XP ganho no total</label><input class="f box" id="f-xpt" type="number" min="0" data-bind="xpTotal" value="${esc(S.xpTotal)}"></div>
-        <div><label class="lbl" for="f-xpg">XP gasto</label><input class="f box" id="f-xpg" type="number" min="0" data-bind="xpGasto" value="${esc(S.xpGasto)}"></div>
-      </div>
-    </details>`;
+`;
 }
 
 /* "neófita 26% · ancillae 33% · ancião 27% …" */

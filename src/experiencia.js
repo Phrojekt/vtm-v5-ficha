@@ -538,14 +538,53 @@ function xpConta() {
   const total = Number(S.xpTotal) || 0, gasto = Number(S.xpGasto) || 0;
   return { total, gasto, disp: total - gasto, compras, avulso, maoGasto: gasto - compras - avulso, ganhoLivro, maoGanho: total - ganhoLivro };
 }
+/* os três números do saldo são campos: editar entra no livro como movimento */
+const campo = (k, v) => `<input class="xp-campo" type="number" inputmode="numeric" data-xp-campo="${k}" value="${v}" aria-label="${{ disp: 'XP disponível', ganho: 'XP ganho', gasto: 'XP gasto' }[k]}"${k === 'disp' ? '' : ' min="0"'}>`;
+function xpEditarCampo(k, v) {
+  const c = xpConta();
+  v = Math.round(Number(v));
+  if (!isFinite(v)) return render(), xpRedesenhar();
+  const reg = (tipo, n, nota) => { S.xpLog = (S.xpLog || []).concat([{ em: new Date().toISOString(), xp: n, nota, tipo }]); };
+  let msg = '';
+  if (k === 'ganho' || k === 'disp') {
+    const novo = k === 'ganho' ? Math.max(0, v) : Math.max(0, c.gasto + v);
+    const d = novo - c.total;
+    if (!d) return render(), xpRedesenhar();
+    reg(d > 0 ? 'ganho' : 'retirada', Math.abs(d), `${k === 'disp' ? 'Disponível' : 'Ganho'} editado: ${k === 'disp' ? c.disp : c.total} → ${k === 'disp' ? novo - c.gasto : novo}`);
+    S.xpTotal = novo;
+    msg = `Ganho ${c.total} → ${novo} (${d > 0 ? '+' : '−'}${Math.abs(d)} XP).`;
+  } else {
+    const piso = c.gasto - xpGastoSolto();
+    const novo = Math.max(0, v);
+    if (novo < piso) {
+      render(); xpRedesenhar();
+      return avisoXP(`O gasto não pode ficar abaixo de ${piso}: é o que as compras registradas custaram. Para baixar mais, devolva compras no livro de experiência.`, null, 9000);
+    }
+    const d = novo - c.gasto;
+    if (!d) return render(), xpRedesenhar();
+    reg(d > 0 ? 'gasto' : 'volta', Math.abs(d), `Gasto editado: ${c.gasto} → ${novo}`);
+    S.xpGasto = novo;
+    msg = `Gasto ${c.gasto} → ${novo} (${d > 0 ? '+' : '−'}${Math.abs(d)} XP).`;
+  }
+  render(); xpRedesenhar();
+  avisoXP(`${msg} Disponível: ${xpDisponivel()}. Registrado no livro.`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
+}
+document.addEventListener('change', ev => {
+  const t = ev.target;
+  if (t && t.dataset && t.dataset.xpCampo) xpEditarCampo(t.dataset.xpCampo, t.value);
+});
+document.addEventListener('keydown', ev => {
+  const t = ev.target;
+  if (ev.key === 'Enter' && t && t.dataset && t.dataset.xpCampo) { ev.preventDefault(); t.blur(); }
+});
 function xpSaldoHtml() {
   const c = xpConta();
   const partesGasto = [`compras ${c.compras}`].concat(c.avulso ? [`avulso ${c.avulso}`] : [], c.maoGasto > 0 ? [`à mão ${c.maoGasto}`] : []);
   const partesGanho = [`no livro ${c.ganhoLivro}`].concat(c.maoGanho ? [`à mão ${c.maoGanho}`] : []);
   return `<div class="xp-saldo">
-      <div class="disp${c.disp < 0 ? ' neg' : ''}"><span class="olho">Disponível</span><b>${c.disp}</b>${c.disp < 0 ? '<small>gastou mais do que ganhou</small>' : ''}</div>
-      <div><span class="olho">Ganho</span><b>${c.total}</b><small>${partesGanho.join(' · ')}</small></div>
-      <div><span class="olho">Gasto</span><b>${c.gasto}</b><small>${partesGasto.join(' · ')}</small></div>
+      <label class="disp${c.disp < 0 ? ' neg' : ''}"><span class="olho">Disponível</span>${campo('disp', c.disp)}<small>${c.disp < 0 ? 'gastou mais do que ganhou' : 'mudar aqui ajusta o ganho'}</small></label>
+      <label><span class="olho">Ganho</span>${campo('ganho', c.total)}<small>${partesGanho.join(' · ')}</small></label>
+      <label><span class="olho">Gasto</span>${campo('gasto', c.gasto)}<small>${partesGasto.join(' · ')}</small></label>
     </div>
     ${c.maoGasto < 0 ? `<div class="xp-alerta"><p>O gasto anotado (${c.gasto}) é menor que o que a ficha registra em compras e gastos avulsos (${c.compras + c.avulso}).</p>
       <button type="button" class="btn sm primary" data-xp="acertar">Acertar o gasto para ${c.compras + c.avulso}</button></div>` : ''}
