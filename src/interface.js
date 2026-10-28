@@ -491,7 +491,7 @@ function uiMesa() {
     <summary><span class="mesa-tit">Na mesa</span>${resumo}</summary>
     ${cards[0].outerHTML.replace(' data-mesa', '').replace('<h2>Vitais</h2>', '<h2>Na mesa</h2>')
       .replace('<div class="card-b">', '<div class="card-b"><p class="mesa-nota">Marque dano e os medidores aqui mesmo, sem entrar em Editar.</p>')
-      .replace(/<\/div>\s*<\/div>\s*$/, `<div class="mesa-xp"><span><b>${xpDisponivel()}</b> XP disponíveis</span><span class="mesa-xp-b"><button type="button" class="btn sm" data-acao="xp">Registrar</button>${ehCacador() ? '' : '<button type="button" class="btn sm primary" data-evo="entrar">Evoluir</button>'}</span></div></div></div>`)}
+      .replace(/<\/div>\s*<\/div>\s*$/, `<div class="mesa-xp"><div class="mesa-xp-h"><span><b>${xpDisponivel()}</b> XP disponíveis<small>ganho ${Number(S.xpTotal) || 0} · gasto ${Number(S.xpGasto) || 0}</small></span><span class="mesa-xp-b"><button type="button" class="btn sm ghost" data-acao="xp">Livro</button>${ehCacador() ? '' : '<button type="button" class="btn sm primary" data-evo="entrar">Evoluir</button>'}</span></div>${xpMovHtml('mesa')}</div></div></div>`)}
   </details>`;
   el('mesa-d').addEventListener('toggle', e => { if (!matchMedia('(min-width: 921px)').matches) UI.mesaAberta = e.target.open; });
 }

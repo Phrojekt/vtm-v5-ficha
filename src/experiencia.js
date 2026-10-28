@@ -28,7 +28,7 @@
    Carregado depois de app.js e antes de interface.js.
    ============================================================ */
 
-const XP = { cat: 'esp', espHab: '', espTxt: '' };
+const XP = { cat: 'esp', espHab: '', espTxt: '', qtd: 1 };
 const EVO = { on: false, pend: null };
 
 const xpDisponivel = () => (Number(S.xpTotal) || 0) - (Number(S.xpGasto) || 0);
@@ -176,7 +176,10 @@ function evoBarra() {
   let meio, acoes;
   if (p && p.modo === 'comprar') {
     const falta = p.custo - disp;
-    meio = `<b>${esc(p.rot)} ${p.de} → ${p.para}</b><span>${p.custo} XP${falta > 0 ? ` · <em>faltam ${falta}</em>` : ` · sobram ${disp - p.custo}`}</span>`;
+    const a = evoAlvo(p.path), o = orcamento();
+    const aberta = a && criacaoConferida() && (a.tipo === 'disc' ? o.disc.atual < o.disc.alvo : !o[a.tipo].ok);
+    meio = `<b>${esc(p.rot)} ${p.de} → ${p.para}</b><span>${p.custo} XP${falta > 0 ? ` · <em>faltam ${falta}</em>` : ` · sobram ${disp - p.custo}`}</span>${aberta
+      ? `<span class="evo-alerta">A criação de ${a.tipo === 'atr' ? 'Atributos' : a.tipo === 'hab' ? 'Habilidades' : 'Disciplinas'} ainda não fechou: este ponto vai contar como XP, não como criação. Para distribuir a criação, saia do Evoluir.</span>` : ''}`;
     acoes = `<button type="button" class="btn primary" id="evo-ok" data-evo="ok"${falta > 0 ? ' disabled' : ''}>Comprar</button><button type="button" class="btn ghost" data-evo="cancelar">Cancelar</button>`;
   } else if (p && p.modo === 'devolver') {
     meio = `<b>Devolver ${esc(p.rot)} ${p.de} → ${p.para}</b><span>+${p.custo} XP de volta</span>`;
@@ -291,13 +294,77 @@ function xpTabela() {
 
 /* ---------- livro de experiência ---------- */
 /* ganhos e gastos numa linha só, do mais novo ao mais velho */
+/* movimentos avulsos de S.xpLog: o que cada um faz com o total e o gasto */
+const XP_MOV = {
+  ganho:    { rot: 'Ganhar',              txt: 'Experiência da sessão',          total: +1, gasto: 0,  sinal: '+' },
+  retirada: { rot: 'Tirar',               txt: 'XP retirado',                    total: -1, gasto: 0,  sinal: '−' },
+  gasto:    { rot: 'Disponível → gasto',  txt: 'Gasto fora da ficha',            total: 0,  gasto: +1, sinal: '−' },
+  volta:    { rot: 'Gasto → disponível',  txt: 'Gasto que voltou ao disponível', total: 0,  gasto: -1, sinal: '+' }
+};
+const tipoMov = g => XP_MOV[g && g.tipo] ? g.tipo : 'ganho';
+/* XP gasto que não está preso a nenhuma compra registrada: só esse pode voltar */
+const xpGastoSolto = () => Math.max(0, (Number(S.xpGasto) || 0) - (S.xpCompras || []).reduce((t, c) => t + (Number(c.custo) || 0), 0));
+
 function xpLivro() {
-  const ganhos = (S.xpLog || []).map((g, i) => ({ t: 'g', em: g.em, xp: Number(g.xp) || 0, txt: g.nota || 'Experiência da sessão', i }));
-  const gastos = (S.xpCompras || []).map((c, i) => ({ t: 'c', em: c.em || '', xp: -(Number(c.custo) || 0), txt: c.rot, i, c }));
-  const tudo = ganhos.concat(gastos).sort((a, b) => (b.em || '').localeCompare(a.em || '') || (a.t === b.t ? b.i - a.i : (a.t === 'c' ? -1 : 1)));
-  const somaGanhos = ganhos.reduce((t, g) => t + g.xp, 0);
-  const anterior = (Number(S.xpTotal) || 0) - somaGanhos;
+  const movs = (S.xpLog || []).map((g, i) => {
+    const tp = tipoMov(g), m = XP_MOV[tp], n = Number(g.xp) || 0;
+    return { t: 'g', tp, em: g.em, n, sinal: m.sinal, txt: g.nota || m.txt, i };
+  });
+  const gastos = (S.xpCompras || []).map((c, i) => ({ t: 'c', em: c.em || '', n: Number(c.custo) || 0, sinal: '−', txt: c.rot, i, c }));
+  const tudo = movs.concat(gastos).sort((a, b) => (b.em || '').localeCompare(a.em || '') || (a.t === b.t ? b.i - a.i : (a.t === 'c' ? -1 : 1)));
+  const noLivro = movs.reduce((t, g) => t + XP_MOV[g.tp].total * g.n, 0);
+  const anterior = (Number(S.xpTotal) || 0) - noLivro;
   return { tudo, anterior };
+}
+
+/* ganhar, tirar, passar para gasto, voltar para disponível */
+function xpMover(tipo, n, nota) {
+  const m = XP_MOV[tipo];
+  n = Math.round(Number(n) || 0);
+  if (!m || n <= 0) return uiAviso('Escolha uma quantidade de XP maior que zero.');
+  const disp = xpDisponivel();
+  if ((tipo === 'retirada' || tipo === 'gasto') && n > disp)
+    return uiAviso(disp > 0 ? `Só há ${disp} XP disponíve${disp > 1 ? 'is' : 'l'}.` : 'Não há XP disponível.');
+  if (tipo === 'volta') {
+    const solto = xpGastoSolto();
+    if (n > solto) return uiAviso(solto > 0
+      ? `Só ${solto} XP do gasto estão soltos. O resto está preso a compras: devolva pelo livro de experiência.`
+      : 'Todo o XP gasto está preso a compras. Para recuperar, devolva a compra no livro de experiência.');
+  }
+  S.xpLog = (S.xpLog || []).concat([{ em: new Date().toISOString(), xp: n, nota: nota || '', tipo }]);
+  S.xpTotal = Math.max(0, (Number(S.xpTotal) || 0) + m.total * n);
+  S.xpGasto = Math.max(0, (Number(S.xpGasto) || 0) + m.gasto * n);
+  render(); xpRedesenhar();
+  const verbo = { ganho: `+${n} XP`, retirada: `−${n} XP`, gasto: `${n} XP passaram para gasto`, volta: `${n} XP voltaram ao disponível` }[tipo];
+  uiAviso(`${verbo}${nota ? ' (' + nota + ')' : ''}. Disponível agora: ${xpDisponivel()}.`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
+}
+function xpApagarMov(i) {
+  const g = (S.xpLog || [])[i];
+  if (!g) return;
+  const m = XP_MOV[tipoMov(g)], n = Number(g.xp) || 0;
+  S.xpLog = S.xpLog.filter((x, j) => j !== i);
+  S.xpTotal = Math.max(0, (Number(S.xpTotal) || 0) - m.total * n);
+  S.xpGasto = Math.max(0, (Number(S.xpGasto) || 0) - m.gasto * n);
+  render(); xpRedesenhar();
+  uiAviso(`Registro apagado: ${g.nota || m.txt}.`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
+}
+
+/* o controle de quantidade: em Na mesa, no quadro de Notas e no diálogo */
+function xpMovHtml(variante) {
+  const disp = xpDisponivel(), solto = xpGastoSolto();
+  const b = (tipo, txt, off, dica) => `<button type="button" aria-label="${esc(XP_MOV[tipo].rot)}" class="btn sm${tipo === 'ganho' ? ' primary' : ''}" data-xp="mov" data-m="${tipo}"${off ? ` disabled title="${esc(dica)}"` : ` title="${esc(dica)}"`}>${txt}</button>`;
+  return `<div class="xp-mov xp-mov-${variante}" role="group" aria-label="Mexer no XP">
+    <div class="xp-mov-q">
+      <span class="xp-qtd"><button type="button" data-xp="qtd" data-d="-1" aria-label="Menos XP">−</button><input class="xp-qtd-in" type="number" min="1" max="999" inputmode="numeric" value="${XP.qtd}" aria-label="Quantidade de XP"><button type="button" data-xp="qtd" data-d="1" aria-label="Mais XP">+</button></span>
+      ${variante === 'mesa' ? '<span class="xp-mov-u">XP</span>' : `<input class="f xp-nota-in" type="text" maxlength="80" placeholder="Nota (opcional): sessão 4, o resgate no porto" aria-label="Nota do registro">`}
+    </div>
+    <div class="xp-mov-b">
+      ${b('ganho', '+ Ganhar', false, 'Soma ao XP ganho')}
+      ${b('retirada', '− Tirar', disp <= 0, disp > 0 ? 'Tira do XP ganho (só do disponível)' : 'Não há XP disponível')}
+      ${b('gasto', variante === 'mesa' ? '→ Gasto' : 'Disponível → gasto', disp <= 0, disp > 0 ? 'Marca como gasto sem escolher o que comprou' : 'Não há XP disponível')}
+      ${b('volta', variante === 'mesa' ? '← Disponível' : 'Gasto → disponível', solto <= 0, solto > 0 ? `Até ${solto} XP de gasto avulso podem voltar` : 'Todo o gasto está preso a compras: devolva pelo livro')}
+    </div>
+  </div>`;
 }
 /* uma compra pode ser devolvida se o traço ainda está no nível que ela deu
    e se nenhuma compra posterior depende dela */
@@ -346,14 +413,7 @@ function xpHtml() {
       <div><span class="olho">Ganho</span><b>${Number(S.xpTotal) || 0}</b></div>
       <div><span class="olho">Gasto</span><b>${Number(S.xpGasto) || 0}</b></div>
     </div>
-    <form class="xp-ganhar" onsubmit="return false">
-      <span class="lbl">Registrar experiência da sessão</span>
-      <div class="linha">
-        <input class="f" id="xp-ganho" type="number" min="1" max="999" inputmode="numeric" placeholder="XP" aria-label="XP ganho">
-        <input class="f" id="xp-nota" type="text" maxlength="80" placeholder="Nota (opcional): sessão 4, o resgate no porto" aria-label="Nota">
-        <button type="button" class="btn" data-xp="ganhar">Somar</button>
-      </div>
-    </form>`;
+    ${xpMovHtml('cheio')}`;
   if (ehCacador()) {
     return saldo + xpHistoricoHtml() + `<p class="note" style="margin:14px 0 0">A compra passo a passo usa a tabela de Vampiro. Em Caçador, suba os traços em <strong>Editar</strong> e ajuste o XP gasto em <em>Notas &amp; experiência</em>.</p>`;
   }
@@ -417,13 +477,14 @@ function xpHistoricoHtml() {
   return `<section class="xp-livro" aria-label="Livro de experiência">
     <h3 class="nv-h3">Livro de experiência</h3>
     <ol>${tudo.slice(0, 40).map(x => {
-      if (x.t === 'g') return `<li class="g"><span class="xp-d">${x.em ? esc(xpData(x.em)) : ''}</span><span class="xp-t">${esc(x.txt)}</span><b>+${x.xp}</b>
-        <button type="button" class="x" data-xp="rm-ganho" data-i="${x.i}" aria-label="Apagar este registro de ganho">✕</button></li>`;
+      if (x.t === 'g') return `<li class="g ${x.tp}"><span class="xp-d">${x.em ? esc(xpData(x.em)) : ''}</span><span class="xp-t">${esc(x.txt)}${x.tp === 'gasto' || x.tp === 'volta' ? ` <small>(${esc(XP_MOV[x.tp].rot)})</small>` : ''}</span><b>${x.sinal}${x.n}</b>
+        <button type="button" class="x" data-xp="rm-mov" data-i="${x.i}" aria-label="Apagar este registro e desfazer o efeito">✕</button></li>`;
       const pode = xpPodeDevolver(x.i);
-      return `<li class="c"><span class="xp-d">${x.em ? esc(xpData(x.em)) : 'criação'}</span><span class="xp-t">${esc(x.txt)}</span><b>${x.xp}</b>
+      return `<li class="c"><span class="xp-d">${x.em ? esc(xpData(x.em)) : 'criação'}</span><span class="xp-t">${esc(x.txt)}</span><b>−${x.n}</b>
         ${x.em ? `<button type="button" class="btn sm ghost" data-xp="devolver" data-i="${x.i}"${pode === 'ok' ? '' : ` disabled title="${esc(pode)}"`}>Devolver</button>` : '<span></span>'}</li>`;
     }).join('')}
     ${anterior > 0 ? `<li class="g anterior"><span class="xp-d">—</span><span class="xp-t">Antes do livro (ganho anotado à mão)</span><b>+${anterior}</b><span></span></li>` : ''}</ol>
+    <p class="note" style="margin:6px 0 0">O ✕ apaga o registro e desfaz o efeito dele no saldo.</p>
   </section>`;
 }
 
@@ -470,14 +531,9 @@ function xpComprar(id) {
   } }), 50);
 }
 
-function xpGanhar() {
-  const n = Math.round(Number((el('xp-ganho') || {}).value) || 0);
-  if (n <= 0) { const c = el('xp-ganho'); if (c) c.focus(); return; }
-  const nota = String((el('xp-nota') || {}).value || '').trim();
-  S.xpLog = (S.xpLog || []).concat([{ em: new Date().toISOString(), xp: n, nota }]);
-  S.xpTotal = (Number(S.xpTotal) || 0) + n;
-  render(); xpRedesenhar('xp-ganho');
-  uiAviso(`+${n} XP${nota ? ' (' + nota + ')' : ''}. Disponível agora: ${xpDisponivel()}.`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
+function xpQtd(n) {
+  XP.qtd = Math.max(1, Math.min(999, Math.round(Number(n) || 1)));
+  document.querySelectorAll('.xp-qtd-in').forEach(c => { if (c !== document.activeElement) c.value = XP.qtd; });
 }
 
 /* ---------- eventos ---------- */
@@ -505,21 +561,29 @@ document.addEventListener('click', ev => {
   const a = t.dataset.xp;
   if (a === 'comprar') return xpComprar(t.dataset.id);
   if (a === 'esp') return xpComprar();
-  if (a === 'ganhar') return xpGanhar();
   if (a === 'devolver') return xpDevolver(Number(t.dataset.i));
-  if (a === 'rm-ganho') {
-    const g = (S.xpLog || [])[Number(t.dataset.i)];
-    if (!g) return;
-    S.xpLog = S.xpLog.filter((x, j) => j !== Number(t.dataset.i));
-    S.xpTotal = Math.max(0, (Number(S.xpTotal) || 0) - (Number(g.xp) || 0));
-    render(); xpRedesenhar();
-    uiAviso(`Registro apagado: −${g.xp} XP.`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
+  if (a === 'rm-mov') return xpApagarMov(Number(t.dataset.i));
+  if (a === 'qtd') return xpQtd(XP.qtd + Number(t.dataset.d));
+  if (a === 'mov') {
+    const box = t.closest('.xp-mov');
+    const q = box && box.querySelector('.xp-qtd-in');
+    if (q) xpQtd(q.value);
+    const nota = String(((box && box.querySelector('.xp-nota-in')) || {}).value || '').trim();
+    return xpMover(t.dataset.m, XP.qtd, nota);
   }
+});
+document.addEventListener('input', ev => {
+  const t = ev.target;
+  if (t && t.classList && t.classList.contains('xp-qtd-in')) { const n = Math.round(Number(t.value)); if (n >= 1) XP.qtd = Math.min(999, n); }
 });
 document.addEventListener('keydown', ev => {
   if (ev.key === 'Escape' && EVO.pend && evoAtivo() && !document.querySelector('dialog[open]')) { EVO.pend = null; render(); return; }
   if (ev.key !== 'Enter' || !ev.target) return;
-  if (ev.target.id === 'xp-ganho' || ev.target.id === 'xp-nota') { ev.preventDefault(); xpGanhar(); }
+  if (ev.target.classList && (ev.target.classList.contains('xp-qtd-in') || ev.target.classList.contains('xp-nota-in'))) {
+    ev.preventDefault();
+    const g = ev.target.closest('.xp-mov'); const b = g && g.querySelector('[data-m="ganho"]');
+    if (b) b.click();
+  }
   if (ev.target.id === 'xp-esp-txt') { ev.preventDefault(); xpComprar(); }
 });
 

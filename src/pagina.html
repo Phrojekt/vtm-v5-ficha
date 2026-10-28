@@ -755,7 +755,39 @@ fieldset.xp-comprar legend{padding:0 6px}
 .mesa-xp span{flex:1; font-size:14px; color:var(--ink-2)}
 .mesa-xp b{font-family:var(--f-disp); font-size:18px; color:var(--ink)}
 @media (max-width:520px){ .xp-saldo b{font-size:20px} .xp-cats{grid-template-columns:1fr 1fr} }
+.mesa-xp{display:block}
+.mesa-xp .mesa-xp-h{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.mesa-xp .mesa-xp-h > span:first-child{flex:1; min-width:120px}
+.mesa-xp-h small{display:block; font-size:12.5px; color:var(--ink-3)}
 .mesa-xp .mesa-xp-b{flex:none; display:flex; gap:6px}
+/* controle de quantidade de XP */
+.xp-mov{display:flex; flex-direction:column; gap:8px; margin:10px 0 0}
+.xp-mov-q{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.xp-mov .xp-qtd{display:inline-flex; align-items:stretch; border:1px solid var(--line-2); border-radius:8px; background:var(--ground); overflow:hidden}
+.xp-mov .xp-qtd button{background:none; border:0; color:var(--ink-2); cursor:pointer; font-size:18px; line-height:1; padding:0 12px; min-height:36px}
+.xp-mov .xp-qtd button:hover{color:var(--blood-ink); background:var(--blood-soft)}
+.xp-mov .xp-qtd-in{width:56px; border:0; border-inline:1px solid var(--line); background:transparent; text-align:center; font:700 18px/1 var(--f-disp); color:var(--ink); font-variant-numeric:lining-nums tabular-nums; -moz-appearance:textfield}
+.xp-mov .xp-qtd-in::-webkit-inner-spin-button, .xp-mov .xp-qtd-in::-webkit-outer-spin-button{-webkit-appearance:none; margin:0}
+.xp-mov-u{font:600 14px var(--f-ui); color:var(--ink-3)}
+.xp-mov .xp-nota-in{flex:1; min-width:180px}
+.xp-mov-b{display:flex; gap:6px; flex-wrap:wrap}
+.xp-mov-mesa .xp-mov-b{display:grid; grid-template-columns:repeat(2,minmax(0,1fr))}
+.xp-mov-mesa .xp-mov-b .btn{justify-content:center; padding-inline:6px; white-space:normal; line-height:1.15; min-width:0}
+.xp-mov-mesa .xp-qtd-in{width:48px}
+.xp-livro li.retirada b, .xp-livro li.gasto b{color:var(--blood-ink)}
+.xp-livro .xp-t small{color:var(--ink-3); font-size:12.5px}
+/* pontos comprados com XP: dourados */
+:root{--xp-ouro:#b8892b}
+.dot.on.xp{background:var(--xp-ouro); border-color:var(--xp-ouro)}
+.xp-cria{margin:8px 0 12px; padding:9px 11px; border:1px solid var(--xp-ouro); border-radius:8px; background:color-mix(in srgb, var(--xp-ouro) 9%, transparent); font-size:14px}
+.xp-cria p{margin:0 0 6px; line-height:1.45}
+.xp-cria ul{list-style:none; margin:0; padding:0}
+.xp-cria li{display:flex; align-items:center; gap:10px; padding:4px 0; border-top:1px dotted var(--line)}
+.xp-cria li > span{flex:1; min-width:0}
+.xp-cria small{color:var(--ink-3)}
+.xp-cria li.ajuda em{color:var(--ok, #2d6a3e); font-style:normal; font-weight:600}
+.xp-amostra{display:inline-block; width:11px; height:11px; border-radius:50%; background:var(--xp-ouro); margin-right:6px; vertical-align:-1px}
+.evo-txt .evo-alerta{color:var(--warn, #8a5a00); font-weight:600; margin-top:2px}
 /* experiência: diálogo */
 .xp-ganhar{margin:0 0 14px}
 .xp-ganhar .linha{flex-wrap:wrap; margin-top:4px}
@@ -1111,7 +1143,6 @@ h1,h2,h3,h4,.pw-card h4,.md-g b,.qtd output,.vital-h .n{font-variant-numeric:lin
             <div class="menu-w so-dono">
               <button type="button" class="btn" id="btn-ficha-mais" aria-label="Mais ações da ficha" aria-haspopup="menu" aria-expanded="false" aria-controls="menu-ficha"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg><span class="rot-longo">Mais</span></button>
               <div class="menu" id="menu-ficha" role="menu" aria-label="Mais ações da ficha" hidden>
-                <button type="button" class="mi" role="menuitem" data-acao="xp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v18M7 8l5-5 5 5"/><path d="M5 21h14"/></svg><span><b>Experiência</b><small>Registrar sessão, comprar e histórico</small></span></button>
                 <button type="button" class="mi" role="menuitem" data-acao="compartilhar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/></svg><span><b>Crônica e compartilhar</b><small>Pôr numa crônica, link de leitura, entregar</small></span></button>
                 <button type="button" class="mi" role="menuitem" data-acao="historico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg><span><b>Histórico de versões</b><small>Ver, comparar e voltar atrás</small></span></button>
                 <hr>

@@ -119,12 +119,28 @@ const maxVontade= () => (S.atr.autocontrole || 1) + (S.atr.determinacao || 1);
 const discDoCla = () => (CLAS[S.meta.cla] ? CLAS[S.meta.cla].disc : []);
 
 /* ---------- componentes ---------- */
+/* compras de XP de um traço, e o nível que ele tinha antes delas (o da criação) */
+const comprasXP = (tipo, k) => (S.xpCompras || []).filter(c => c.tipo === tipo && c.k === k);
+function nivelCriacao(tipo, k, atual) {
+  const cs = comprasXP(tipo, k);
+  return cs.length ? Math.min(atual, ...cs.map(c => Number(c.de) || 0)) : atual;
+}
+function traçoDoCaminho(path) {
+  let m;
+  if ((m = /^(atr|hab)\.(\w+)$/.exec(path))) return { tipo: m[1], k: m[2] };
+  if ((m = /^disc\.(\d+)\.nivel$/.exec(path)) && S.disc[Number(m[1])]) return { tipo: 'disc', k: S.disc[Number(m[1])].nome };
+  return null;
+}
 function dots(path, valor, max, extra) {
   /* modo Evoluir: marca o próximo ponto e mostra o custo (experiencia.js) */
   const evo = typeof evoDots === 'function' ? evoDots(path, valor, max) : null;
-  let h = `<span class="dots${evo ? ' evo' : ''}" role="group" aria-label="${esc(extra || '')}">`;
+  /* pontos comprados com XP ficam dourados: a régua de criação não os conta */
+  const tr = traçoDoCaminho(path);
+  const base = tr ? nivelCriacao(tr.tipo, tr.k, valor) : valor;
+  let h = `<span class="dots${evo ? ' evo' : ''}" role="group" aria-label="${esc(extra || '')}${base < valor ? `: ${base} da criação, ${valor - base} de XP` : ''}">`;
   for (let i = 1; i <= max; i++) {
-    h += `<button type="button" class="dot${i <= valor ? ' on' : ''}${evo ? evo.classe(i) : ''}" data-dot="${esc(path)}" data-i="${i}" data-max="${max}" aria-label="${i}"></button>`;
+    const xp = i > base && i <= valor;
+    h += `<button type="button" class="dot${i <= valor ? ' on' : ''}${xp ? ' xp' : ''}${evo ? evo.classe(i) : ''}" data-dot="${esc(path)}" data-i="${i}" data-max="${max}" aria-label="${i}${xp ? ' (XP)' : ''}"${xp ? ' title="Comprado com experiência"' : ''}></button>`;
   }
   return h + '</span>' + (evo ? evo.etiqueta : '');
 }
@@ -497,13 +513,57 @@ function textoXP(xp) {
   const x = orcamentoXP();
   return `Os pontos acima da criação equivalem a ${xp} XP` + (x.coberto ? ', já contados no XP gasto.' : '. Registre esse XP em Notas e XP para fechar a conta.');
 }
+/* o que a régua de criação deixou de fora por ter vindo de XP, com o botão
+   "Foi na criação" para quando o ponto, na verdade, foi da criação */
+function blocoXPCriacao(tipo, d) {
+  if (!criacaoConferida()) return '';
+  const ks = [...new Set((S.xpCompras || []).filter(c => c.tipo === tipo).map(c => c.k))];
+  if (!ks.length) return '';
+  const atual = k => tipo === 'atr' ? (S.atr[k] || 1) : tipo === 'hab' ? (S.hab[k] || 0) : ((S.disc.find(x => x.nome === k) || {}).nivel || 0);
+  const nome = k => tipo === 'atr' ? xpRotAtrApp(k) : tipo === 'hab' ? rotuloHab(k) : k;
+  const aberto = d && !d.ok;
+  /* quais compras, se fossem da criação, fecham ou melhoram a conta */
+  const erro = x => x ? x.nFalta + x.nExcesso : 0;
+  const ajuda = k => {
+    if (!d || d.ok || !d.alvo || tipo === 'disc') return '';
+    const fonte = tipo === 'atr' ? S.atr : S.hab;
+    const base = baseSemXP(fonte, tipo); base[k] = fonte[k] || 0;
+    const chaves = (tipo === 'atr' ? ATRIBUTOS : HABILIDADES).flatMap(g => g.itens.map(i => i[0]));
+    const nd = diffDistrib(contagem(base, chaves), d.alvo);
+    return nd.ok ? 'fecha a criação' : (erro(nd) < erro(d) ? 'ajuda a fechar' : '');
+  };
+  const itens = ks.map(k => {
+    const cs = comprasXP(tipo, k), custo = cs.reduce((t, c) => t + (Number(c.custo) || 0), 0);
+    const a = atual(k), de = nivelCriacao(tipo, k, a), dica = ajuda(k);
+    return `<li${dica ? ' class="ajuda"' : ''}><span><b>${esc(nome(k))} ${de} → ${a}</b> <small>${custo} XP${dica ? ' · <em>' + dica + '</em>' : ''}</small></span>
+      ${aberto ? `<button type="button" class="btn sm${dica === 'fecha a criação' ? ' primary' : ''}" data-act="xp-para-criacao" data-tipo="${tipo}" data-k="${esc(k)}" title="O ponto fica; os ${custo} XP voltam ao disponível">Foi na criação</button>` : ''}</li>`;
+  }).join('');
+  return `<div class="xp-cria">
+    <p><span class="xp-amostra" aria-hidden="true"></span>${aberto
+      ? 'A régua acima conta a <b>criação</b>: os pontos dourados vieram de XP e ficam de fora. Se algum deles foi da criação, marque abaixo: o ponto fica e o XP volta.'
+      : 'Os pontos dourados vieram de XP e ficam fora da conta da criação.'}</p>
+    <ul>${itens}</ul>
+  </div>`;
+}
+const xpRotAtrApp = k => { for (const g of ATRIBUTOS) for (const i of g.itens) if (i[0] === k) return i[1]; return k; };
+/* "Foi na criação": tira as compras de XP do traço e devolve o XP; o ponto continua */
+function xpParaCriacao(tipo, k) {
+  const cs = comprasXP(tipo, k);
+  if (!cs.length) return;
+  const custo = cs.reduce((t, c) => t + (Number(c.custo) || 0), 0);
+  S.xpCompras = S.xpCompras.filter(c => !(c.tipo === tipo && c.k === k));
+  S.xpGasto = Math.max(0, (Number(S.xpGasto) || 0) - custo);
+  render();
+  if (typeof uiAviso === 'function') uiAviso(`${tipo === 'atr' ? xpRotAtrApp(k) : tipo === 'hab' ? rotuloHab(k) : k} agora conta como criação; ${custo} XP voltaram ao disponível.`, { rotulo: 'Desfazer', fn: () => histDesfazer() });
+}
 function statusDistrib(d, tipo) {
   const x = tipo ? orcamentoXP()[tipo] : null;
   const nomes = tipo === 'hab' ? ['Habilidade', 'Habilidades'] : ['Atributo', 'Atributos'];
-  if (d.ok) return statusCriacao('ok', '', medidorDistrib(d));
+  const xpBloco = tipo ? blocoXPCriacao(tipo, d) : '';
+  if (d.ok) return statusCriacao('ok', '', medidorDistrib(d)) + xpBloco;
   if (x && x.viavel) return statusCriacao(orcamentoXP().coberto ? 'ok' : 'under', textoXP(x.xp)
-    + (tipo === 'hab' && x.distrib !== S.distribHab ? ` (conta feita como ${DISTRIB_HABILIDADES[x.distrib].nome})` : ''));
-  return statusCriacao(d.nExcesso ? 'over' : 'under', textoDistrib(d, nomes[0], nomes[1]), medidorDistrib(d));
+    + (tipo === 'hab' && x.distrib !== S.distribHab ? ` (conta feita como ${DISTRIB_HABILIDADES[x.distrib].nome})` : '')) + xpBloco;
+  return statusCriacao(d.nExcesso ? 'over' : 'under', (xpBloco ? 'Na criação: ' : '') + textoDistrib(d, nomes[0], nomes[1]), medidorDistrib(d)) + xpBloco;
 }
 function statusPontos(atual, alvo, nome) {
   const st = estadoNum(atual, alvo);
@@ -528,10 +588,11 @@ function statusDisciplinas() {
   }
   const soXP = partes.length === 1 && discXP && x.xp > 0;
   partes.push(...o.avisos);
-  if (!partes.length) return statusCriacao('ok');
+  const xpBloco = blocoXPCriacao('disc', { ok: o.atual >= o.alvo });
+  if (!partes.length) return statusCriacao('ok') + xpBloco;
   const certo = soXP && partes.length === 1 && orcamentoXP().coberto;
   const txt = partes.join('; ');
-  return statusCriacao(certo ? 'ok' : 'under', soXP ? txt : txt.charAt(0).toUpperCase() + txt.slice(1) + '.');
+  return statusCriacao(certo ? 'ok' : 'under', soXP ? txt : txt.charAt(0).toUpperCase() + txt.slice(1) + '.') + xpBloco;
 }
 function estadoNum(atual, alvo) { return atual === alvo ? 'ok' : (atual > alvo ? 'over' : 'under'); }
 
@@ -1087,11 +1148,12 @@ function blocoExperiencia() {
         <div><span class="olho">Ganho</span><b>${Number(S.xpTotal) || 0}</b></div>
         <div><span class="olho">Gasto</span><b>${Number(S.xpGasto) || 0}</b></div>
       </div>
+      ${typeof xpMovHtml === 'function' ? xpMovHtml('cheio') : ''}
       <div class="xp-resumo-a">
         ${cacador ? '' : `<button type="button" class="btn primary" data-evo="entrar">Evoluir na ficha</button>`}
-        <button type="button" class="btn" data-acao="xp">${cacador ? 'Registrar e histórico' : 'Registrar sessão, outras compras e histórico'}</button>
+        <button type="button" class="btn" data-acao="xp">${cacador ? 'Livro de experiência' : 'Outras compras e livro de experiência'}</button>
       </div>
-      ${ultimo ? `<p class="note xp-ultimo">Último registro: ${esc(ultimo.txt)} (${ultimo.xp > 0 ? '+' : ''}${ultimo.xp} XP${ultimo.em ? ', ' + esc(xpData(ultimo.em)) : ''}).</p>` : ''}
+      ${ultimo ? `<p class="note xp-ultimo">Último registro: ${esc(ultimo.txt)} (${ultimo.sinal}${ultimo.n} XP${ultimo.em ? ', ' + esc(xpData(ultimo.em)) : ''}).</p>` : ''}
     </div>
     ${blocoXP(false)}
     <details class="xp-manual">
@@ -2406,6 +2468,7 @@ document.addEventListener('click', (ev) => {
   }
 
   const act = t.dataset.act;
+  if (act === 'xp-para-criacao') return xpParaCriacao(t.dataset.tipo, t.dataset.k);
   if (act === 'dano-qtd') {
     const n = t.dataset.trilha;
     MESA.qtd[n] = Math.max(1, Math.min(10, (MESA.qtd[n] || 1) + Number(t.dataset.d)));
