@@ -18,20 +18,33 @@
 const UI = { tela: '', arg: '', modo: 'ver', obs: null, pendente: false, ultimaRota: '' };
 
 /* ---------- avisos (substituem as mensagens espalhadas pela tela) ---------- */
-function uiAviso(texto, acao) {
+/* avisos (toast).
+   acao: { rotulo, fn } — um botão; some ao ser usado.
+   acao.rotulo 'Desfazer': vale só para a versão da ficha em que o aviso nasceu.
+     Qualquer mudança depois disso tira o aviso (histMudou), e só existe um
+     "Desfazer" na tela por vez: assim ele nunca desfaz outra coisa.
+   opts.grupo: um aviso por assunto ('xp'); o novo substitui o anterior. */
+function uiAviso(texto, acao, opts) {
   const z = el('avisos');
   if (!z || !texto) return;
+  opts = opts || {};
   const ult = z.lastElementChild;
   if (ult && ult.dataset.t === texto) return;
+  const desfaz = !!(acao && acao.rotulo === 'Desfazer');
+  if (opts.grupo) z.querySelectorAll(`.aviso[data-grupo="${opts.grupo}"]`).forEach(a => a.remove());
+  if (desfaz) z.querySelectorAll('.aviso[data-versao]').forEach(a => a.remove());
   const d = document.createElement('div');
   d.className = 'aviso';
   d.dataset.t = texto;
+  if (opts.grupo) d.dataset.grupo = opts.grupo;
+  if (desfaz && typeof HIST !== 'undefined') d.dataset.versao = HIST.versao;
   d.innerHTML = `<p>${esc(texto)}</p>${acao ? `<button type="button" class="btn sm" data-aviso-acao style="opacity:1;font-size:13px;color:inherit;border-color:currentColor;background:transparent">${esc(acao.rotulo)}</button>` : ''}<button type="button" data-aviso-fechar aria-label="Fechar aviso">×</button>`;
   d.querySelector('[data-aviso-fechar]').onclick = () => d.remove();
   if (acao) d.querySelector('[data-aviso-acao]').onclick = () => { d.remove(); acao.fn(); };
   z.appendChild(d);
   while (z.children.length > 3) z.firstElementChild.remove();
-  setTimeout(() => d.remove(), Math.min(14000, 4500 + texto.length * 45) + (acao ? 4000 : 0));
+  const dura = opts.dura || (Math.min(14000, 4500 + texto.length * 45) + (acao ? 4000 : 0));
+  setTimeout(() => d.remove(), dura);
 }
 
 /* ---------- menus suspensos (padrão "menu button" da WAI-ARIA) ---------- */

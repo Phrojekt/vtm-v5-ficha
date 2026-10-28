@@ -114,21 +114,17 @@ function evoConfirmar() {
     setPath(p.path, p.para);
     EVO.pend = null;
     render();
-    uiAviso(`${a.rot} ${p.de} → ${p.para}: ${p.custo} XP. Sobram ${xpDisponivel()}.`, { rotulo: 'Desfazer', fn: () => histDesfazer() });
-    if (a.tipo === 'disc') setTimeout(() => uiAviso(`${a.rot} subiu: escolha o poder novo no quadro da Disciplina.`, { rotulo: 'Ver Disciplinas', fn: () => uiIrSecao('disciplinas') }), 50);
+    avisoXP(`${a.rot} ${p.de} → ${p.para}: ${p.custo} XP. Sobram ${xpDisponivel()}.${a.tipo === 'disc' ? ' Escolha o poder novo no quadro da Disciplina.' : ''}`, { rotulo: 'Desfazer', fn: () => histDesfazer() });
     return;
   }
   if (p.modo === 'devolver') {
     S.xpCompras = S.xpCompras.filter((c, j) => !p.idx.includes(j));
     S.xpGasto = Math.max(0, (Number(S.xpGasto) || 0) - p.custo);
     setPath(p.path, p.para);
-    if (a.tipo === 'disc') {
-      const d = S.disc.find(x => x.nome === a.k);
-      if (d && (d.poderes || []).length > d.nivel) uiAviso(`${a.k} tem mais poderes que pontos agora: tire um no quadro da Disciplina.`);
-    }
     EVO.pend = null;
     render();
-    uiAviso(`Devolvido: ${a.rot} ${p.de} → ${p.para}, +${p.custo} XP.`, { rotulo: 'Desfazer', fn: () => histDesfazer() });
+    const d = a.tipo === 'disc' && S.disc.find(x => x.nome === a.k);
+    avisoXP(`Devolvido: ${a.rot} ${p.de} → ${p.para}, +${p.custo} XP.${d && (d.poderes || []).length > d.nivel ? ' Tire um poder no quadro da Disciplina.' : ''}`, { rotulo: 'Desfazer', fn: () => histDesfazer() });
   }
 }
 function evoLigar(on) {
@@ -193,6 +189,132 @@ function evoBarra() {
   }
   b.innerHTML = `<div class="evo-in" role="region" aria-label="Modo Evoluir" aria-live="polite"><div class="evo-txt">${meio}</div><div class="evo-acoes">${acoes}</div></div>`;
   document.body.style.setProperty('--evo-h', b.offsetHeight + 'px');
+}
+
+/* ============================================================
+   EDIÇÃO DIRETA CONTABILIZADA
+   Fora do modo Evoluir, mexer na ficha também conta:
+   - com a criação daquela parte ainda aberta, o ponto é de criação;
+   - com ela fechada, subir um ponto é compra pela tabela do livro;
+   - baixar um ponto comprado devolve exatamente o que foi pago;
+   - sem XP bastante, nada muda e o aviso oferece registrar o que falta.
+   Vale para Atributos, Habilidades, Disciplinas (pontos e Disciplina nova),
+   Vantagens, Especializações e Rituais/Cerimônias.
+   Só vale com XP já registrado na ficha (antes disso, tudo é criação).
+   Caçador e fichas importadas sem as regras de criação ficam de fora.
+   ============================================================ */
+/* ficha sem nenhum XP registrado ainda está na criação: edição direta não cobra */
+const contaAtiva = () => !ehCacador() && criacaoConferida() && usaXP() && !(typeof NV !== 'undefined' && NV.leitura);
+
+/* a criação daquela parte já foi toda distribuída? (lido ANTES da mudança) */
+function criacaoFechada(tipo, extra) {
+  if (tipo === 'atr') return cabeNaCriacao(Object.values(baseSemXP(S.atr, 'atr')).map(Number), multiconjunto(DISTRIB_ATRIBUTOS));
+  if (tipo === 'hab') {
+    const vh = Object.values(baseSemXP(S.hab, 'hab')).map(Number);
+    return Object.keys(DISTRIB_HABILIDADES).some(k => cabeNaCriacao(vh, multiconjunto(DISTRIB_HABILIDADES[k].mapa)));
+  }
+  const o = orcamento();
+  if (tipo === 'disc') return !!(S.meta.cla && CLAS[S.meta.cla] && S.meta.cla !== 'Sangue-ralo') && o.disc.atual >= o.disc.alvo;
+  if (tipo === 'vant') return o.vant.atual >= o.vant.alvo;
+  if (tipo === 'esp') {
+    const pred = PREDADORES[S.meta.predador];
+    const total = HABILIDADES.flatMap(g => g.itens.map(i => i[0])).reduce((t, k) => t + listaEsp(k).length, 0);
+    const gratis = 1 + ESPECIALIDADE_GRATIS.filter(k => (S.hab[k] || 0) > 0).length + (pred && pred.esp && pred.esp.length ? 1 : 0);
+    return total - comprasDoTipo('esp').length >= gratis;
+  }
+  if (tipo === 'rit') {
+    const d = S.disc.find(x => x.nome === (extra && extra.disc));
+    if (!d) return false;
+    const linhas = (d.rituais || '').split('\n').map(x => x.trim()).filter(Boolean).length;
+    return linhas - comprasDoTipo('rit').filter(c => c.disc === d.nome).length >= 1;
+  }
+  return false;
+}
+const comprasDoTipo = tipo => (S.xpCompras || []).filter(c => c.tipo === tipo);
+const nomeTraço = (tipo, k) => tipo === 'atr' ? xpRotAtr(k) : tipo === 'hab' ? rotuloHab(k) : k;
+const custoNivel = (tipo, k, n) => tipo === 'atr' ? n * 5 : tipo === 'hab' ? n * 3 : tipo === 'disc' ? n * xpMultDisc(k) : 3;
+function avisoXP(txt, acao, dura) { uiAviso(txt, acao, { grupo: 'xp', dura: dura || 6500 }); }
+
+/* cobra uma compra pela tabela. Devolve true se tratou (cobrou ou barrou).
+   compra: { tipo, k, de, para, custo?, rot?, disc?, aplicar() } */
+function contaCobrar(c, fechadaAntes) {
+  if (!contaAtiva() || !fechadaAntes) return false;
+  const passos = [];
+  if (['atr', 'hab', 'disc', 'vant'].includes(c.tipo)) {
+    /* um registro por nível: baixar um ponto devolve só aquele ponto */
+    for (let n = c.de + 1; n <= c.para; n++) passos.push({ tipo: c.tipo, k: c.k, de: n - 1, para: n, custo: custoNivel(c.tipo, c.k, n),
+      rot: `${nomeTraço(c.tipo, c.k)} ${n - 1} → ${n}${c.tipo === 'disc' ? ` (× ${xpMultDisc(c.k)})` : ''}` });
+  } else {
+    passos.push({ tipo: c.tipo, k: c.k, de: c.de, para: c.para, custo: c.custo, rot: c.rot, disc: c.disc });
+  }
+  const custo = passos.reduce((t, x) => t + x.custo, 0), disp = xpDisponivel();
+  const nome = c.rotCurto || passos.map(x => x.rot).join(', ');
+  if (custo > disp) {
+    const falta = custo - disp;
+    avisoXP(`${nome} custa ${custo} XP pela tabela e há ${disp} disponíve${disp === 1 ? 'l' : 'is'}. Nada mudou.`,
+      { rotulo: `Registrar ${falta} XP e comprar`, fn: () => {
+        S.xpLog = (S.xpLog || []).concat([{ em: new Date().toISOString(), xp: falta, nota: `Registrado para comprar ${nome}`, tipo: 'ganho' }]);
+        S.xpTotal = (Number(S.xpTotal) || 0) + falta;
+        contaCobrar(c, true);
+      } }, 12000);
+    return true;
+  }
+  c.aplicar();
+  const em = new Date().toISOString();
+  S.xpCompras = (S.xpCompras || []).concat(passos.map(x => Object.assign(x, { manual: true, em, direto: true })));
+  S.xpGasto = (Number(S.xpGasto) || 0) + custo;
+  render(); xpRedesenhar();
+  avisoXP(`${nome}: ${custo} XP pela tabela. Disponível: ${xpDisponivel()}.${c.tipo === 'disc' ? ' Escolha o poder novo no quadro da Disciplina.' : ''}`,
+    { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
+  return true;
+}
+
+/* devolve as compras escolhidas por `filtro`, aplica a mudança e avisa. */
+function contaDevolver(filtro, aplicar, rot) {
+  if (!contaAtiva()) return false;
+  const lista = S.xpCompras || [];
+  const sai = lista.filter(filtro);
+  if (!sai.length) return false;
+  const valor = sai.reduce((t, c) => t + (Number(c.custo) || 0), 0);
+  aplicar();
+  S.xpCompras = lista.filter(c => !sai.includes(c));
+  S.xpGasto = Math.max(0, (Number(S.xpGasto) || 0) - valor);
+  render(); xpRedesenhar();
+  avisoXP(`${rot}: ${valor} XP voltaram ao disponível (${xpDisponivel()}).`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
+  return true;
+}
+
+/* clique num ponto fora do modo Evoluir. true se tratou. */
+function contaDot(path, i) {
+  if (!contaAtiva()) return false;
+  let m, tipo, k, atual, min = 0, aplicar;
+  if ((m = /^(atr|hab)\.(\w+)$/.exec(path))) { tipo = m[1]; k = m[2]; atual = Number(getPath(path)) || 0; min = tipo === 'atr' ? 1 : 0; }
+  else if ((m = /^disc\.(\d+)\.nivel$/.exec(path)) && S.disc[Number(m[1])]) { tipo = 'disc'; k = S.disc[Number(m[1])].nome; atual = S.disc[Number(m[1])].nivel || 0; min = 0; }
+  else if ((m = /^vant\.(\d+)\.pontos$/.exec(path)) && S.vant[Number(m[1])]) {
+    const v = S.vant[Number(m[1])];
+    if (!v.nome || v.fonte === 'predador') return false;
+    tipo = 'vant'; k = v.nome; atual = Number(v.pontos) || 0; min = 0;
+  } else return false;
+  const novo = Math.max(min, atual === i ? i - 1 : i);
+  if (novo === atual) return false;
+  aplicar = () => setPath(path, novo);
+  if (novo > atual) {
+    const fechada = criacaoFechada(tipo);
+    return contaCobrar({ tipo, k, de: atual, para: novo, aplicar }, fechada);
+  }
+  /* baixar: devolve as compras que deram os níveis que saem */
+  const sai = (S.xpCompras || []).filter(c => c.tipo === tipo && c.k === k && Number(c.para) > novo && Number(c.de) >= novo);
+  const meio = (S.xpCompras || []).find(c => c.tipo === tipo && c.k === k && Number(c.de) < novo && Number(c.para) > novo);
+  if (meio) {
+    /* corta a compra no meio: o pedaço de cima vira um registro à parte e é devolvido */
+    const por = (Number(meio.custo) || 0) / (Number(meio.para) - Number(meio.de));
+    const cima = Object.assign({}, meio, { de: novo, custo: Math.round(por * (Number(meio.para) - novo)), rot: `${nomeTraço(tipo, k)} ${novo} → ${meio.para}` });
+    meio.custo = (Number(meio.custo) || 0) - cima.custo; meio.para = novo; meio.rot = `${nomeTraço(tipo, k)} ${meio.de} → ${novo}`;
+    S.xpCompras = S.xpCompras.concat([cima]);
+    sai.push(cima);
+  }
+  if (!sai.length) return false;
+  return contaDevolver(c => sai.includes(c), aplicar, `${nomeTraço(tipo, k)} ${atual} → ${novo}`);
 }
 
 /* ---------- compras sem ponto na ficha ---------- */
@@ -321,13 +443,13 @@ function xpLivro() {
 function xpMover(tipo, n, nota) {
   const m = XP_MOV[tipo];
   n = Math.round(Number(n) || 0);
-  if (!m || n <= 0) return uiAviso('Escolha uma quantidade de XP maior que zero.');
+  if (!m || n <= 0) return avisoXP('Escolha uma quantidade de XP maior que zero.');
   const disp = xpDisponivel();
   if ((tipo === 'retirada' || tipo === 'gasto') && n > disp)
-    return uiAviso(disp > 0 ? `Só há ${disp} XP disponíve${disp > 1 ? 'is' : 'l'}.` : 'Não há XP disponível.');
+    return avisoXP(disp > 0 ? `Só há ${disp} XP disponíve${disp > 1 ? 'is' : 'l'}.` : 'Não há XP disponível.');
   if (tipo === 'volta') {
     const solto = xpGastoSolto();
-    if (n > solto) return uiAviso(solto > 0
+    if (n > solto) return avisoXP(solto > 0
       ? `Só ${solto} XP do gasto estão soltos. O resto está preso a compras: devolva pelo livro de experiência.`
       : 'Todo o XP gasto está preso a compras. Para recuperar, devolva a compra no livro de experiência.');
   }
@@ -336,7 +458,7 @@ function xpMover(tipo, n, nota) {
   S.xpGasto = Math.max(0, (Number(S.xpGasto) || 0) + m.gasto * n);
   render(); xpRedesenhar();
   const verbo = { ganho: `+${n} XP`, retirada: `−${n} XP`, gasto: `${n} XP passaram para gasto`, volta: `${n} XP voltaram ao disponível` }[tipo];
-  uiAviso(`${verbo}${nota ? ' (' + nota + ')' : ''}. Disponível agora: ${xpDisponivel()}.`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
+  avisoXP(`${verbo}${nota ? ' (' + nota + ')' : ''}. Disponível agora: ${xpDisponivel()}.`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
 }
 function xpApagarMov(i) {
   const g = (S.xpLog || [])[i];
@@ -346,7 +468,7 @@ function xpApagarMov(i) {
   S.xpTotal = Math.max(0, (Number(S.xpTotal) || 0) - m.total * n);
   S.xpGasto = Math.max(0, (Number(S.xpGasto) || 0) - m.gasto * n);
   render(); xpRedesenhar();
-  uiAviso(`Registro apagado: ${g.nota || m.txt}.`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
+  avisoXP(`Registro apagado: ${g.nota || m.txt}.`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
 }
 
 /* o controle de quantidade: em Na mesa, no quadro de Notas e no diálogo */
@@ -402,17 +524,39 @@ function xpDevolver(i) {
   S.xpCompras = S.xpCompras.filter((x, j) => j !== i);
   S.xpGasto = Math.max(0, (Number(S.xpGasto) || 0) - (Number(c.custo) || 0));
   render(); xpRedesenhar();
-  uiAviso(`Devolvido: ${c.rot}, +${c.custo} XP.`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
+  avisoXP(`Devolvido: ${c.rot}, +${c.custo} XP.`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
+}
+
+/* ---------- a conta ---------- */
+/* de onde vem cada número do saldo */
+function xpConta() {
+  const log = S.xpLog || [];
+  const soma = tp => log.filter(g => tipoMov(g) === tp).reduce((t, g) => t + (Number(g.xp) || 0), 0);
+  const compras = (S.xpCompras || []).reduce((t, c) => t + (Number(c.custo) || 0), 0);
+  const avulso = soma('gasto') - soma('volta');
+  const ganhoLivro = soma('ganho') - soma('retirada');
+  const total = Number(S.xpTotal) || 0, gasto = Number(S.xpGasto) || 0;
+  return { total, gasto, disp: total - gasto, compras, avulso, maoGasto: gasto - compras - avulso, ganhoLivro, maoGanho: total - ganhoLivro };
+}
+function xpSaldoHtml() {
+  const c = xpConta();
+  const partesGasto = [`compras ${c.compras}`].concat(c.avulso ? [`avulso ${c.avulso}`] : [], c.maoGasto > 0 ? [`à mão ${c.maoGasto}`] : []);
+  const partesGanho = [`no livro ${c.ganhoLivro}`].concat(c.maoGanho ? [`à mão ${c.maoGanho}`] : []);
+  return `<div class="xp-saldo">
+      <div class="disp${c.disp < 0 ? ' neg' : ''}"><span class="olho">Disponível</span><b>${c.disp}</b>${c.disp < 0 ? '<small>gastou mais do que ganhou</small>' : ''}</div>
+      <div><span class="olho">Ganho</span><b>${c.total}</b><small>${partesGanho.join(' · ')}</small></div>
+      <div><span class="olho">Gasto</span><b>${c.gasto}</b><small>${partesGasto.join(' · ')}</small></div>
+    </div>
+    ${c.maoGasto < 0 ? `<div class="xp-alerta"><p>O gasto anotado (${c.gasto}) é menor que o que a ficha registra em compras e gastos avulsos (${c.compras + c.avulso}).</p>
+      <button type="button" class="btn sm primary" data-xp="acertar">Acertar o gasto para ${c.compras + c.avulso}</button></div>` : ''}
+    ${c.disp < 0 ? `<div class="xp-alerta"><p>Faltam ${-c.disp} XP no ganho para cobrir o que foi gasto.</p>
+      <button type="button" class="btn sm primary" data-xp="cobrir">Registrar ${-c.disp} XP ganho</button></div>` : ''}`;
 }
 
 /* ---------- o diálogo ---------- */
 function xpHtml() {
   const disp = xpDisponivel();
-  const saldo = `<div class="xp-saldo">
-      <div class="disp"><span class="olho">Disponível</span><b>${disp}</b></div>
-      <div><span class="olho">Ganho</span><b>${Number(S.xpTotal) || 0}</b></div>
-      <div><span class="olho">Gasto</span><b>${Number(S.xpGasto) || 0}</b></div>
-    </div>
+  const saldo = `${xpSaldoHtml()}
     ${xpMovHtml('cheio')}`;
   if (ehCacador()) {
     return saldo + xpHistoricoHtml() + `<p class="note" style="margin:14px 0 0">A compra passo a passo usa a tabela de Vampiro. Em Caçador, suba os traços em <strong>Editar</strong> e ajuste o XP gasto em <em>Notas &amp; experiência</em>.</p>`;
@@ -525,10 +669,7 @@ function xpComprar(id) {
   XP.espTxt = '';
   render();
   xpRedesenhar();
-  uiAviso(`Comprado: ${op.rot} por ${op.custo} XP.`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
-  if (op.compra.tipo === 'disc') setTimeout(() => uiAviso(`Escolha o poder novo de ${op.compra.k} no quadro da Disciplina.`, { rotulo: 'Escolher agora', fn: () => {
-    uiFecharDialogos(); uiTrocarModo('editar'); uiIrSecao('disciplinas');
-  } }), 50);
+  avisoXP(`Comprado: ${op.rot} por ${op.custo} XP.${op.compra.tipo === 'disc' ? ` Escolha o poder novo de ${op.compra.k} no quadro da Disciplina.` : ''}`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
 }
 
 function xpQtd(n) {
@@ -563,6 +704,13 @@ document.addEventListener('click', ev => {
   if (a === 'esp') return xpComprar();
   if (a === 'devolver') return xpDevolver(Number(t.dataset.i));
   if (a === 'rm-mov') return xpApagarMov(Number(t.dataset.i));
+  if (a === 'acertar') {
+    const c = xpConta();
+    S.xpGasto = c.compras + c.avulso;
+    render(); xpRedesenhar();
+    return avisoXP(`Gasto acertado para ${S.xpGasto} XP. Disponível: ${xpDisponivel()}.`, { rotulo: 'Desfazer', fn: () => { histDesfazer(); xpRedesenhar(); } });
+  }
+  if (a === 'cobrir') { const f = -xpConta().disp; return f > 0 ? xpMover('ganho', f, 'Para cobrir o que já foi gasto') : undefined; }
   if (a === 'qtd') return xpQtd(XP.qtd + Number(t.dataset.d));
   if (a === 'mov') {
     const box = t.closest('.xp-mov');

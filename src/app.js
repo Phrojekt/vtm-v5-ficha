@@ -55,7 +55,12 @@ function salvar() { histRegistrar(); bibliotecaGuardar(); nvBarra(); }
    Digitação seguida (menos de 1,2 s entre teclas) vira um passo só.
    O histórico é da ficha aberta; trocar de ficha recomeça.
    ============================================================ */
-const HIST = { id: null, atual: null, antes: [], depois: [], ultimoT: 0, agrupar: false, restaurando: false };
+const HIST = { id: null, atual: null, antes: [], depois: [], ultimoT: 0, agrupar: false, restaurando: false, versao: 0 };
+/* cada mudança da ficha ganha um número: um aviso com "Desfazer" só vale para a versão em que nasceu */
+function histMudou() {
+  HIST.versao++;
+  document.querySelectorAll('.aviso[data-versao]').forEach(a => { if (Number(a.dataset.versao) !== HIST.versao) a.remove(); });
+}
 const HIST_MAX = 40;
 function histRegistrar() {
   const agrupar = HIST.agrupar; HIST.agrupar = false;
@@ -70,12 +75,14 @@ function histRegistrar() {
   }
   HIST.ultimoT = agrupar ? agora : 0;
   HIST.atual = json; HIST.depois = [];
+  histMudou();
   histBotoes();
 }
 function histAplicar(json) {
   HIST.restaurando = true;
   try { const id = S._id; S = adotar(JSON.parse(json)); S._id = id; HIST.atual = json; HIST.ultimoT = 0; render(); }
   finally { HIST.restaurando = false; }
+  histMudou();
   /* o render acima não registrou: grava a ficha restaurada */
   bibliotecaGuardar(); nvBarra(); histBotoes();
 }
@@ -492,6 +499,8 @@ function blocoXP(compacto) {
     <p><span class="pip under" aria-hidden="true"></span>A ficha tem pontos acima da criação (<strong>${x.implicito} XP</strong> pela tabela do livro) e nenhuma experiência registrada, por isso eles aparecem como erro nas abas. Se vieram de experiência, registre:</p>
     <button type="button" class="btn sm" data-act="xp-implicito">Registrar ${x.faltaXP} XP (total e gasto)</button>
   </div>`;
+  /* coberto: não há nada a decidir, o quadro some */
+  if (x.coberto) return '';
   const lista = x.partes.map(([t, v]) => `${t} ${v}`).join(' · ');
   const semTotal = (Number(S.xpTotal) || 0) < (x.registrado + x.implicito);
   return `<div class="xp-impl" data-estado="${x.coberto ? 'ok' : 'under'}">
@@ -522,6 +531,8 @@ function blocoXPCriacao(tipo, d) {
   const atual = k => tipo === 'atr' ? (S.atr[k] || 1) : tipo === 'hab' ? (S.hab[k] || 0) : ((S.disc.find(x => x.nome === k) || {}).nivel || 0);
   const nome = k => tipo === 'atr' ? xpRotAtrApp(k) : tipo === 'hab' ? rotuloHab(k) : k;
   const aberto = d && !d.ok;
+  /* criação fechada: os pontos dourados bastam, o quadro some */
+  if (!aberto) return '';
   /* quais compras, se fossem da criação, fecham ou melhoram a conta */
   const erro = x => x ? x.nFalta + x.nExcesso : 0;
   const ajuda = k => {
@@ -554,7 +565,7 @@ function xpParaCriacao(tipo, k) {
   S.xpCompras = S.xpCompras.filter(c => !(c.tipo === tipo && c.k === k));
   S.xpGasto = Math.max(0, (Number(S.xpGasto) || 0) - custo);
   render();
-  if (typeof uiAviso === 'function') uiAviso(`${tipo === 'atr' ? xpRotAtrApp(k) : tipo === 'hab' ? rotuloHab(k) : k} agora conta como criação; ${custo} XP voltaram ao disponível.`, { rotulo: 'Desfazer', fn: () => histDesfazer() });
+  if (typeof uiAviso === 'function') uiAviso(`${tipo === 'atr' ? xpRotAtrApp(k) : tipo === 'hab' ? rotuloHab(k) : k} agora conta como criação; ${custo} XP voltaram ao disponível.`, { rotulo: 'Desfazer', fn: () => histDesfazer() }, { grupo: 'xp' });
 }
 function statusDistrib(d, tipo) {
   const x = tipo ? orcamentoXP()[tipo] : null;
@@ -1143,11 +1154,7 @@ function blocoExperiencia() {
   const ultimo = (typeof xpLivro === 'function' ? xpLivro().tudo : [])[0];
   const cacador = ehCacador();
   return `<div class="xp-resumo">
-      <div class="xp-saldo">
-        <div class="disp"><span class="olho">Disponível</span><b>${disp}</b></div>
-        <div><span class="olho">Ganho</span><b>${Number(S.xpTotal) || 0}</b></div>
-        <div><span class="olho">Gasto</span><b>${Number(S.xpGasto) || 0}</b></div>
-      </div>
+      ${typeof xpSaldoHtml === 'function' ? xpSaldoHtml() : ''}
       ${typeof xpMovHtml === 'function' ? xpMovHtml('cheio') : ''}
       <div class="xp-resumo-a">
         ${cacador ? '' : `<button type="button" class="btn primary" data-evo="entrar">Evoluir na ficha</button>`}
@@ -2442,6 +2449,7 @@ document.addEventListener('click', (ev) => {
   if (t.dataset.dot != null) {
     const path = t.dataset.dot, i = Number(t.dataset.i);
     if (typeof evoClique === 'function' && evoClique(path, i)) return;
+    if (typeof contaDot === 'function' && contaDot(path, i)) return;
     if (path === 'fome' || path === 'desespero' || path === 'perigo') S[path] = (S[path] === i ? i - 1 : i);
     else {
       const atual = Number(getPath(path)) || 0;
@@ -2511,18 +2519,31 @@ document.addEventListener('click', (ev) => {
     S.xpGasto = (Number(S.xpGasto) || 0) + x.faltaXP;
     if ((Number(S.xpTotal) || 0) < S.xpGasto) S.xpTotal = S.xpGasto;
     render();
-    if (typeof uiAviso === 'function') uiAviso(`${x.faltaXP} XP contados como gastos. Disponível agora: ${(Number(S.xpTotal) || 0) - S.xpGasto}.`, { rotulo: 'Desfazer', fn: () => histDesfazer() });
+    if (typeof uiAviso === 'function') uiAviso(`${x.faltaXP} XP contados como gastos. Disponível agora: ${(Number(S.xpTotal) || 0) - S.xpGasto}.`, { rotulo: 'Desfazer', fn: () => histDesfazer() }, { grupo: 'xp' });
     return;
   }
   if (act === 'regras-criacao') { S.regrasCriacao = !S.regrasCriacao; return render(); }
   if (act === 'mancha') { S.manchas = Math.max(0, Math.min(10, S.manchas + Number(t.dataset.d))); return render(); }
-  if (act === 'rm')     { S[t.dataset.t].splice(Number(t.dataset.i), 1); return render(); }
+  if (act === 'rm')     {
+    const i = Number(t.dataset.i), v = (S[t.dataset.t] || [])[i];
+    const aplicar = () => S[t.dataset.t].splice(i, 1);
+    /* Vantagem comprada com XP: tirar devolve o que foi pago */
+    if (t.dataset.t === 'vant' && v && v.nome && typeof contaDevolver === 'function'
+        && contaDevolver(c => c.tipo === 'vant' && c.k === v.nome, aplicar, `${v.nome} removida`)) return;
+    aplicar(); return render();
+  }
   if (act === 'rm-pw') {
     const d = S.disc[Number(t.dataset.i)];
     if (d) d.poderes = (d.poderes || []).filter(p => p !== t.dataset.nome);
     return render();
   }
-  if (act === 'rm-disc'){ S.disc.splice(Number(t.dataset.i), 1); return render(); }
+  if (act === 'rm-disc'){
+    const i = Number(t.dataset.i), d = S.disc[i];
+    const aplicar = () => S.disc.splice(i, 1);
+    if (d && typeof contaDevolver === 'function'
+        && contaDevolver(c => (c.tipo === 'disc' && c.k === d.nome) || (c.tipo === 'rit' && c.disc === d.nome), aplicar, `${d.nome} removida`)) return;
+    aplicar(); return render();
+  }
   if (act === 'rm-trunfo'){ S.trunfos.splice(Number(t.dataset.i), 1); return render(); }
   if (act === 'add-trunfo') {
     const v = el('add-trunfo').value;
@@ -2533,24 +2554,33 @@ document.addEventListener('click', (ev) => {
 
   if (act === 'add-disc') {
     const v = el('add-disc').value;
-    if (v && !S.disc.some(d => d.nome === v)) S.disc.push({ nome: v, nivel: 1, poderes: [], rituais: '' });
-    return render();
+    if (!v || S.disc.some(d => d.nome === v)) return render();
+    const aplicar = () => S.disc.push({ nome: v, nivel: 1, poderes: [], rituais: '' });
+    /* com a criação de Disciplinas fechada, uma Disciplina nova é compra (nível 1 × multiplicador) */
+    if (typeof contaCobrar === 'function' && contaCobrar({ tipo: 'disc', k: v, de: 0, para: 1, aplicar }, criacaoFechada('disc'))) return;
+    aplicar(); return render();
   }
   if (act === 'add-rit') {
     const i = Number(t.dataset.i);
     const d = S.disc[i], sel = el('add-rit-' + i);
-    if (d && sel && sel.value) {
-      const linhas = (d.rituais || '').split('\n').map(s => s.trim()).filter(Boolean);
-      if (!linhas.includes(sel.value)) linhas.push(sel.value);
-      d.rituais = linhas.join('\n');
-    }
-    return render();
+    if (!(d && sel && sel.value)) return render();
+    const linhas = (d.rituais || '').split('\n').map(s => s.trim()).filter(Boolean);
+    if (linhas.includes(sel.value)) return render();
+    const aplicar = () => { linhas.push(sel.value); d.rituais = linhas.join('\n'); };
+    const cat = CATALOGO_RITUAL[d.nome], nome = sel.value.replace(/\s*\(.*$/, '');
+    const x = cat && cat.lista.find(y => y.pt === nome);
+    if (x && typeof contaCobrar === 'function' && contaCobrar({ tipo: 'rit', k: x.pt, de: 0, para: x.lv, custo: x.lv * 3, rot: `${x.pt} (${cat.rotulo} ${x.lv})`, disc: d.nome, aplicar },
+        criacaoFechada('rit', { disc: d.nome }))) return;
+    aplicar(); return render();
   }
   if (act === 'add-vant' || act === 'add-def') {
     const tipo = act === 'add-vant' ? 'vant' : 'def';
     const sel = el(act === 'add-vant' ? 'add-vant' : 'add-def');
-    if (sel.value) S[tipo].push({ nome: sel.value, pontos: 1, nota: '', fonte: 'user' });
-    return render();
+    if (!sel.value) return render();
+    const aplicar = () => S[tipo].push({ nome: sel.value, pontos: 1, nota: '', fonte: 'user' });
+    if (tipo === 'vant' && typeof contaCobrar === 'function'
+        && contaCobrar({ tipo: 'vant', k: sel.value, de: 0, para: 1, aplicar }, criacaoFechada('vant'))) return;
+    aplicar(); return render();
   }
   if (act === 'add-vant-livre') { S.vant.push({ nome: '', pontos: 1, nota: '', fonte: 'user' }); return render(); }
   if (act === 'add-def-livre')  { S.def .push({ nome: '', pontos: 1, nota: '', fonte: 'user' }); return render(); }
@@ -2560,17 +2590,24 @@ document.addEventListener('click', (ev) => {
     const txt = campo ? campo.value.trim().replace(/[,;]+/g, ' ') : '';
     if (!k) return;
     if (!txt) { if (campo) campo.focus(); return; }
-    if (!listaEsp(k).some(x => x.toLowerCase() === txt.toLowerCase())) S.esp[k] = listaEsp(k).concat([txt]).join(', ');
     espHabEscolhida = k;
-    render();
+    if (!listaEsp(k).some(x => x.toLowerCase() === txt.toLowerCase())) {
+      const n = listaEsp(k).length;
+      const aplicar = () => { S.esp[k] = listaEsp(k).concat([txt]).join(', '); };
+      /* com as especializações grátis já usadas, a nova custa 3 XP */
+      if (!(typeof contaCobrar === 'function' && contaCobrar({ tipo: 'esp', k, de: n, para: n + 1, custo: 3, rot: `especialização em ${rotuloHab(k)}: ${txt}`, aplicar }, criacaoFechada('esp')))) {
+        aplicar(); render();
+      }
+    } else render();
     const c = el('add-esp-txt'); if (c) c.focus();
     return;
   }
   if (act === 'rm-esp') {
-    const k = t.dataset.k, l = listaEsp(k);
-    l.splice(Number(t.dataset.i), 1);
-    S.esp[k] = l.join(', ');
-    return render();
+    const k = t.dataset.k, l = listaEsp(k), i = Number(t.dataset.i), txt = l[i];
+    const aplicar = () => { l.splice(i, 1); S.esp[k] = l.join(', '); };
+    if (typeof contaDevolver === 'function'
+        && contaDevolver(c => c.tipo === 'esp' && c.k === k && String(c.rot).replace(/^.*?:\s*/, '') === txt, aplicar, `Especialização ${txt} removida`)) return;
+    aplicar(); return render();
   }
   if (act === 'reaplicar-pred') { aplicarPredador(S.meta.predador); return render(); }
   if (act === 'sortear')        { nvAntesDeSortear(); return sortear(); }
@@ -2603,6 +2640,14 @@ document.addEventListener('input', (ev) => {
 
 document.addEventListener('change', (ev) => {
   const t = ev.target;
+  /* Rituais escritos à mão: a linha de um ritual comprado que sumiu devolve o XP */
+  if (t.dataset && /^disc\.\d+\.rituais$/.test(t.dataset.bind || '') && typeof contaDevolver === 'function') {
+    const d = S.disc[Number(t.dataset.bind.split('.')[1])];
+    if (d) {
+      const tem = new Set((d.rituais || '').split('\n').map(x => x.trim().replace(/\s*\(.*$/, '')).filter(Boolean));
+      if (contaDevolver(c => c.tipo === 'rit' && c.disc === d.nome && !tem.has(c.k), () => {}, 'Ritual tirado')) return;
+    }
+  }
 
   if (t.dataset && t.dataset.forja) {
     if (t.dataset.forja === 'contexto') return;
